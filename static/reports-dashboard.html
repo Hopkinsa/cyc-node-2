@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Complexity Reporting Dashboard</title>
+    <link rel="stylesheet" href="/static/reports.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Complexity reporting</p>
+          <h1>Historical project complexity reports.</h1>
+          <p class="lede">View code complexity reports for the projects listed.</p>
+        </div>
+        <div class="hero-actions">
+          <button id="sync-gitlog" class="secondary" type="button">Sync gitlog</button>
+          <button id="generate-all" class="primary" type="button">Generate all reports</button>
+        </div>
+      </header>
+
+      <section class="status-panel">
+        <div>
+          <span class="label">Source repository</span>
+          <strong id="source-path">Loading...</strong>
+        </div>
+        <div>
+          <span class="label">Gitlog rows</span>
+          <strong id="gitlog-count">0</strong>
+        </div>
+        <div>
+          <span class="label">Stored reports</span>
+          <strong id="report-count">0</strong>
+        </div>
+      </section>
+
+      <section id="status-message" class="message" aria-live="polite">
+        Loading dashboard data...
+      </section>
+
+      <main>
+        <div id="projects" class="projects"></div>
+      </main>
+    </div>
+
+    <template id="project-template">
+      <article class="card">
+        <div class="card-header">
+          <div>
+            <p class="label project-key"></p>
+            <h2 class="project-name"></h2>
+          </div>
+          <div class="card-actions">
+            <a class="secondary report-link hidden" href="#">View reports</a>
+            <button class="primary generate-project" type="button">Generate reports</button>
+          </div>
+        </div>
+        <div class="stats">
+          <div>
+            <span class="label">Matching gitlog rows</span>
+            <strong class="project-gitlog-count"></strong>
+          </div>
+          <div>
+            <span class="label">Stored reports</span>
+            <strong class="project-report-count"></strong>
+          </div>
+          <div>
+            <span class="label">Latest report</span>
+            <strong class="project-latest"></strong>
+          </div>
+        </div>
+      </article>
+    </template>
+
+    <script type="module" src="/static/reports-dashboard.js"></script>
+  </body>
+</html>

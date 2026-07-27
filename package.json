@@ -1,0 +1,39 @@
+{
+  "name": "cyc-node-2",
+  "version": "2.0.0",
+  "description": "NodeJS Cyclometric Complexity Reports",
+  "main": "index.ts",
+  "type": "module",
+  "scripts": {
+    "start": "nodemon --config nodemon.json",
+    "style": "prettier 'src/**/*.{ts, json}' --write",
+    "lint": "npx eslint"
+  },
+  "author": "Andy Hopkins",
+  "license": "ISC",
+  "private": true,
+  "dependencies": {
+    "better-sqlite3": "^12.10.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-validator": "^7.3.2",
+    "nodemon": "^3.1.14",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.9.2",
+    "eslint": "^10.4.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.6",
+    "typescript-eslint": "^8.61.0"
+  },
+  "allowScripts": {
+    "better-sqlite3@12.10.0": true,
+    "fsevents@2.3.3": true
+  }
+}

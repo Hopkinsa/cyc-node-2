@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "module": "NodeNext", // Match Node.js ESM behavior for this package
+    "target": "ESNext", // Compile to the latest ECMAScript version
+    "moduleResolution": "NodeNext", // Use modern Node.js module resolution
+    "esModuleInterop": true, // Enables interop between ES modules and CommonJS
+    "allowSyntheticDefaultImports": true, // Allows default imports from modules with no default export
+    "strict": true, // Enables strict type-checking
+    "skipLibCheck": true, // Skip type-checking declaration files (faster builds)
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "sourceMap": true,
+    "forceConsistentCasingInFileNames": true,
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "typeRoots": [
+      "./node_modules/@types",
+      "./types"
+    ],
+    "outDir": "./dist" // Specifies output directory for compiled files
+  },
+  "include": ["app/**/*.ts", "types/**/*.d.ts"], // Include app files and local type stubs
+  "files": ["global.d.ts"],
+}

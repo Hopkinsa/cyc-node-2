@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Report Browser</title>
+    <link rel="stylesheet" href="/static/reports.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Report browser</p>
+          <h1 id="title">Loading report data...</h1>
+          <p id="subtitle" class="lede"></p>
+        </div>
+        <div class="hero-actions">
+          <a class="secondary button-link" href="/dashboard">Back to dashboard</a>
+          <button id="refresh" class="primary" type="button">Refresh data</button>
+        </div>
+      </header>
+      <section id="message" class="message" aria-live="polite">Loading...</section>
+
+      <main id="project-view" class="layout hidden">
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="label">Stored reports</p>
+              <h2>Available runs</h2>
+            </div>
+            <button id="generate-project" class="primary" type="button">Generate this project</button>
+          </div>
+          <ul id="folders" class="folder-list"></ul>
+        </section>
+
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+              <p class="label">Compare</p>
+              <h2>Compare stored runs</h2>
+            </div>
+          </div>
+          <form id="compare-form" class="compare-form">
+            <label>
+              <span>First run</span>
+              <select id="compare-a"></select>
+            </label>
+            <label>
+              <span>Second run</span>
+              <select id="compare-b"></select>
+            </label>
+            <button class="primary" type="submit">Compare</button>
+          </form>
+        </section>
+      </main>
+
+      <main id="summary-view" class="panel hidden">
+        <div class="panel-header">
+          <div>
+            <p class="label">Summary</p>
+            <h2 id="summary-title"></h2>
+          </div>
+          <div>
+            <p class="label">Key</p>
+            <p><span class="complexityScore minimum">&lt;= 5</span> <span class="complexityScore minor">&lt;= 10</span> <span class="complexityScore medium">&lt;= 20</span> <span class="complexityScore high">&gt; 20</span></p>
+          </div>
+          <a id="summary-back" class="button-link secondary" href="#">Back to reports</a>
+        </div>
+        <div id="summary-table"></div>
+      </main>
+
+      <main id="compare-view" class="panel hidden">
+        <div class="panel-header">
+          <div>
+            <p class="label">Comparison</p>
+            <h2 id="compare-page-title"></h2>
+          </div>
+          <div>
+            <p class="label">Key</p>
+            <p><span class="complexityScore minimum">&lt;= 5</span> <span class="complexityScore minor">&lt;= 10</span> <span class="complexityScore medium">&lt;= 20</span> <span class="complexityScore high">&gt; 20</span></p>
+          </div>
+          <button id="compare-back" class="secondary" type="button">Back to runs</button>
+        </div>
+        <div id="compare-page-table"></div>
+      </main>
+    </div>
+
+    <script type="module" src="/static/reports-browser.js"></script>
+  </body>
+</html>

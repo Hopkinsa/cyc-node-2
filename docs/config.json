@@ -1,0 +1,6 @@
+{
+    "SERVER_PORT": 3000,
+    "PATH": "PATH TO PROJECT",
+    "MODE": "nx",
+    "PROJECTS": [ "ARRAY OF PROJECT NAMES" ]
+}

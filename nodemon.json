@@ -1,0 +1,6 @@
+{
+  "watch": ["app"],
+  "ext": "ts",
+  "ignore": ["dist", "node_modules", "reports", "app/**/*.spec.ts", "app/**/*.test.ts" ],
+  "exec": "node --loader ts-node/esm app/index.ts"
+}
