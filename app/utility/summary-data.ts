@@ -159,7 +159,18 @@ class SummaryReport {
   ): Promise<void> => {
     const loadedData = await SummaryReport.loadFunctionReportFromOutput(outputPath);
     const tmpObj = await SummaryReport.processSummary(loadedData);
-    const tmpReportId = await DBUpdate.createReports(reportData);
+    const fileCount = tmpObj.length;
+    const totalComplexity = tmpObj.reduce(
+      (total, fileItem) => total + fileItem.complexity,
+      0
+    );
+    const averageComplexity = fileCount > 0 ? totalComplexity / fileCount : 0;
+    const tmpReportId = await DBUpdate.createReports({
+      ...reportData,
+      fileCount,
+      totalComplexity,
+      averageComplexity,
+    });
 
     for (const fileItem of tmpObj) {
       const fileData: IFiles = {
@@ -217,6 +228,7 @@ class SummaryReport {
       target,
       targetName,
       idx,
+      storedReport,
       complexityObj,
       hasHtmlReport: false,
     });

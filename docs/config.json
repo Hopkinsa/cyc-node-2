@@ -1,6 +1,6 @@
 {
     "SERVER_PORT": 3000,
-    "PATH": "PATH TO PROJECT",
+    "PATH": "/absolute/path/to/project",
     "MODE": "nx",
-    "PROJECTS": [ "ARRAY OF PROJECT NAMES" ]
+    "PROJECTS": [ "project-name" ]
 }

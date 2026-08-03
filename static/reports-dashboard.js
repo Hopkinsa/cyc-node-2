@@ -1,3 +1,5 @@
+import { renderReportTrend } from './report-chart.js';
+
 const elements = {
   sourcePath: document.querySelector('#source-path'),
   gitlogCount: document.querySelector('#gitlog-count'),
@@ -47,6 +49,14 @@ const loadDashboard = async () => {
     fragment.querySelector('.project-latest').textContent = project.latestReport
       ? `${project.latestReport.report}`
       : 'No stored report';
+    fragment.querySelector('.chart-range').textContent = project.reportHistory.length
+      ? `${project.reportHistory.length} runs`
+      : 'No runs';
+    renderReportTrend(
+      fragment.querySelector('.trend-chart'),
+      project.reportHistory,
+      ['averageComplexity']
+    );
 
     const reportLink = fragment.querySelector('.report-link');
     if (project.reportCount > 0) {
@@ -56,7 +66,11 @@ const loadDashboard = async () => {
 
     fragment
       .querySelector('.generate-project')
-      .addEventListener('click', () => runRequest(`/reports/${project.idx}`, 'POST', `${project.name} reports generated.`));
+      .addEventListener('click', () => runRequest(
+        `/reports/${project.idx}`,
+        'POST',
+        (data) => `${project.name}: ${data.reportsGenerated} reports generated from ${data.gitlogRows} gitlog rows.`
+      ));
 
     elements.projects.append(fragment);
   }
@@ -77,7 +91,10 @@ const runRequest = async (url, method, successMessage) => {
       throw new Error(data?.error || `Request failed with ${response.status}.`);
     }
 
-    setStatus(successMessage, 'success');
+    const resultMessage = typeof successMessage === 'function'
+      ? successMessage(data)
+      : successMessage;
+    setStatus(resultMessage, 'success');
     await loadDashboard();
   } catch (error) {
     setStatus(error instanceof Error ? error.message : 'Request failed.', 'error');
@@ -87,11 +104,19 @@ const runRequest = async (url, method, successMessage) => {
 };
 
 elements.syncGitlog.addEventListener('click', () => {
-  runRequest('/reports/sync-gitlog', 'POST', 'Gitlog synchronized.');
+  runRequest(
+    '/reports/sync-gitlog',
+    'POST',
+    (data) => `Gitlog synchronized: ${data.rows} new matching commits.`
+  );
 });
 
 elements.generateAll.addEventListener('click', () => {
-  runRequest('/reports', 'POST', 'All configured reports processed.');
+  runRequest(
+    '/reports',
+    'POST',
+    (data) => `Reports processed: ${data.reportsGenerated} generated from ${data.gitlogRows} gitlog rows.`
+  );
 });
 
 loadDashboard().catch((error) => {

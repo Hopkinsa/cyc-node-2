@@ -1,5 +1,7 @@
 # CYCNode2
 
+See the [user guide](docs/usage.md) for setup, configuration, dashboard controls, report generation, metrics, charts, and troubleshooting.
+
 ## To install
 
 In a command prompt, from the repository root, run

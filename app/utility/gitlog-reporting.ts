@@ -27,6 +27,7 @@ const FIELD_SEPARATOR = '\x1f';
 const GITHUB_ISSUE_LOOKUP_MAX_ATTEMPTS = 3;
 const GITHUB_ISSUE_LOOKUP_BACKOFF_MS = 500;
 const REPORT_START_DATE = '2026-01-01';
+const MASTER_CHECKPOINT_KEY = 'gitlog:master';
 
 type GitCommitRecord = {
   id: string;
@@ -50,7 +51,13 @@ class GitlogReporting {
 
   static syncGitLog = async (): Promise<IGitLog[]> => {
     const repoSlug = await GitlogReporting.resolveGithubRepoSlug(config.PATH);
-    const commits = await GitlogReporting.listMasterCommits(config.PATH);
+    const lastExtractedCommit = await DBRead.getExtractionState(
+      MASTER_CHECKPOINT_KEY
+    );
+    const commits = await GitlogReporting.listMasterCommits(
+      config.PATH,
+      lastExtractedCommit
+    );
     const labelCache = new Map<number, string[]>();
     const rows: IGitLog[] = [];
 
@@ -78,7 +85,9 @@ class GitlogReporting {
       });
     }
 
-    await DBUpdate.replaceGitLog(rows);
+    await DBUpdate.upsertGitLog(rows);
+    const latestCommit = await GitlogReporting.getMasterTip(config.PATH);
+    await DBUpdate.setExtractionState(MASTER_CHECKPOINT_KEY, latestCommit);
 
     return rows;
   };
@@ -157,16 +166,51 @@ class GitlogReporting {
     }
   };
 
-  static listMasterCommits = async (repoPath: string): Promise<GitCommitRecord[]> => {
+  static getMasterTip = async (repoPath: string): Promise<string> => {
+    const { stdout } = await execFileAsync(
+      'git',
+      ['-C', repoPath, 'rev-parse', 'master'],
+      { maxBuffer: 1024 * 1024 }
+    );
+
+    return stdout.trim();
+  };
+
+  static isCommitOnMaster = async (
+    repoPath: string,
+    commit: string
+  ): Promise<boolean> => {
+    try {
+      await execFileAsync(
+        'git',
+        ['-C', repoPath, 'merge-base', '--is-ancestor', commit, 'master'],
+        { maxBuffer: 1024 * 1024 }
+      );
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  static listMasterCommits = async (
+    repoPath: string,
+    lastExtractedCommit: string | null = null
+  ): Promise<GitCommitRecord[]> => {
+    const hasUsableCheckpoint = lastExtractedCommit
+      ? await GitlogReporting.isCommitOnMaster(repoPath, lastExtractedCommit)
+      : false;
+    const range = hasUsableCheckpoint
+      ? `${lastExtractedCommit}..master`
+      : 'master';
     const { stdout } = await execFileAsync(
       'git',
       [
         '-C',
         repoPath,
         'log',
-        'master',
+        range,
         '--reverse',
-        `--since=${REPORT_START_DATE}`,
+        ...(hasUsableCheckpoint ? [] : [`--since=${REPORT_START_DATE}`]),
         `--format=%H${FIELD_SEPARATOR}%ct${FIELD_SEPARATOR}%B${RECORD_SEPARATOR}`,
       ],
       { maxBuffer: 10 * 1024 * 1024 }
@@ -340,6 +384,9 @@ class GitlogReporting {
         project,
         report: GitlogReporting.formatTimestamp(row.datetime),
         timestamp: row.datetime,
+        fileCount: 0,
+        totalComplexity: 0,
+        averageComplexity: 0,
       };
 
       await SummaryReport.createDataFromOutput(
