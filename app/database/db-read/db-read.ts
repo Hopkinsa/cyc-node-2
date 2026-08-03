@@ -18,6 +18,7 @@ import {
   GET_ALL_REPORT_FILE_FUNCTIONS,
   GET_ALL_REPORT_FILES,
   GET_ALL_REPORTS,
+  GET_EXTRACTION_STATE,
   GET_COMPARE_REPORT_FILES,
   GET_GITLOG_BY_PROJECT,
   GET_REPORT_BY_NAME,
@@ -57,6 +58,15 @@ class DBRead {
       labels: string;
       datetime: number;
     }>).map(DBRead.parseGitLog);
+  };
+
+  static getExtractionState = async (key: string): Promise<string | null> => {
+    log.info_lv2(`${DEBUG}getExtractionState - ${key}`);
+
+    const state = DBService.db.prepare(GET_EXTRACTION_STATE).get(key) as
+      | { value: string }
+      | undefined;
+    return state?.value ?? null;
   };
 
   static getReports = async (): Promise<IReports[]> => {

@@ -9,6 +9,9 @@ export interface IReports {
   project: string;
   report: string;
   timestamp: number;
+  fileCount: number;
+  totalComplexity: number;
+  averageComplexity: number;
 }
 
 export interface IFiles {

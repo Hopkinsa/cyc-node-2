@@ -7,14 +7,14 @@ import {
   IReports,
 } from '../../interface/report-data.interface.ts';
 import {
-  CREATE_GITLOG_DATA,
+  UPSERT_GITLOG_DATA,
   CREATE_FILE_DATA,
   CREATE_FUNCTION_DATA,
   CREATE_REPORT_DATA,
   DELETE_FILES_BY_REPORT_ID,
   DELETE_FUNCTIONS_BY_REPORT_ID,
   DELETE_REPORT_BY_ID,
-  DELETE_GITLOG_DATA,
+  UPSERT_EXTRACTION_STATE,
   UPDATE_REPORT_DATA,
 } from './sql-update.ts';
 
@@ -22,12 +22,10 @@ const DEBUG = 'db-update | ';
 
 class DBUpdate {
 
-  static replaceGitLog = async (data: IGitLog[]): Promise<void> => {
-    log.info_lv2(`${DEBUG}replaceGitLog`);
+  static upsertGitLog = async (data: IGitLog[]): Promise<void> => {
+    log.info_lv2(`${DEBUG}upsertGitLog`);
 
-    DBService.db.prepare(DELETE_GITLOG_DATA).run();
-
-    const insert = DBService.db.prepare(CREATE_GITLOG_DATA);
+    const insert = DBService.db.prepare(UPSERT_GITLOG_DATA);
     const transaction = DBService.db.transaction((rows: IGitLog[]) => {
       rows.forEach((row) => {
         insert.run(row.id, JSON.stringify(row.labels), row.datetime);
@@ -35,6 +33,11 @@ class DBUpdate {
     });
 
     transaction(data);
+  };
+
+  static setExtractionState = async (key: string, value: string): Promise<void> => {
+    log.info_lv2(`${DEBUG}setExtractionState - ${key}`);
+    DBService.db.prepare(UPSERT_EXTRACTION_STATE).run(key, value);
   };
 
   static updateReports = async (data: IReports): Promise<void> => {
@@ -48,7 +51,14 @@ class DBUpdate {
     log.info_lv2(`${DEBUG}createReports`);
     const result = await DBService.db
       .prepare(CREATE_REPORT_DATA)
-      .run(data.project, data.report, data.timestamp);
+      .run(
+        data.project,
+        data.report,
+        data.timestamp,
+        data.fileCount,
+        data.totalComplexity,
+        data.averageComplexity
+      );
 
     const priKey = result.lastInsertRowid;
 

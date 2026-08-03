@@ -29,9 +29,10 @@ class Report {
         const projectReports = storedReports.filter(
           (storedReport) => storedReport.project === projectKey
         );
-        const latestReport = projectReports.sort(
+        const reportsByNewest = projectReports.slice().sort(
           (left, right) => right.timestamp - left.timestamp
-        )[0] ?? null;
+        );
+        const latestReport = reportsByNewest[0] ?? null;
         return {
           idx,
           name: report.NAME,
@@ -39,10 +40,16 @@ class Report {
           gitlogCount: gitlogRows.filter((row) => row.labels.includes(projectKey)).length,
           reportCount: projectReports.length,
           latestReport,
-          recentReports: projectReports
+          latestReportStats: latestReport
+            ? {
+                fileCount: latestReport.fileCount,
+                totalComplexity: latestReport.totalComplexity,
+                averageComplexity: latestReport.averageComplexity,
+              }
+            : null,
+          reportHistory: projectReports
             .slice()
-            .sort((left, right) => right.timestamp - left.timestamp)
-            .slice(0, 6),
+            .sort((left, right) => left.timestamp - right.timestamp),
         };
       })
     );
@@ -92,8 +99,14 @@ class Report {
   };
 
   static syncGitLog = async (_req: Request, res: Response): Promise<void> => {
-    const rows = await GitlogReporting.syncGitLog();
-    res.status(200).json({ rows: rows.length });
+    try {
+      const rows = await GitlogReporting.syncGitLog();
+      res.status(200).json({ rows: rows.length });
+    } catch (error) {
+      res.status(400).json({
+        error: error instanceof Error ? error.message : 'Unable to synchronize gitlog.',
+      });
+    }
   };
 
   static generateAllReports = async (_req: Request, res: Response): Promise<void> => {

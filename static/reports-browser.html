@@ -22,6 +22,20 @@
       <section id="message" class="message" aria-live="polite">Loading...</section>
 
       <main id="project-view" class="layout hidden">
+        <section class="panel project-trend-panel">
+          <div class="panel-header">
+            <div>
+              <p class="label">Report trend</p>
+              <h2>Project history</h2>
+            </div>
+            <div class="chart-toggles" role="group" aria-label="Chart metrics">
+              <button class="chart-toggle" type="button" data-metric="fileCount" aria-pressed="true">Files</button>
+              <button class="chart-toggle" type="button" data-metric="totalComplexity" aria-pressed="false">Total complexity</button>
+              <button class="chart-toggle" type="button" data-metric="averageComplexity" aria-pressed="true">Average complexity</button>
+            </div>
+          </div>
+          <div id="project-trend-chart" class="trend-chart"></div>
+        </section>
         <section class="panel">
           <div class="panel-header">
             <div>

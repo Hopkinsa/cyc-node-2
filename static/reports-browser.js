@@ -1,3 +1,5 @@
+import { renderReportTrend } from './report-chart.js';
+
 const elements = {
   title: document.querySelector('#title'),
   subtitle: document.querySelector('#subtitle'),
@@ -17,6 +19,8 @@ const elements = {
   summaryTable: document.querySelector('#summary-table'),
   summaryBack: document.querySelector('#summary-back'),
   refresh: document.querySelector('#refresh'),
+  projectTrendChart: document.querySelector('#project-trend-chart'),
+  chartToggles: document.querySelectorAll('.chart-toggle'),
 };
 
 const [_, reportsSegment, idxSegment, targetSegment] = window.location.pathname.split('/');
@@ -25,6 +29,16 @@ const targetName = targetSegment ? decodeURIComponent(targetSegment) : null;
 const compareAParam = new URLSearchParams(window.location.search).get('compareA');
 const compareBParam = new URLSearchParams(window.location.search).get('compareB');
 let currentProjectKey = null;
+let projectHistory = [];
+const activeTrendMetrics = new Set(['fileCount', 'averageComplexity']); // 'totalComplexity',
+
+const renderProjectTrend = () => {
+  renderReportTrend(
+    elements.projectTrendChart,
+    projectHistory,
+    Array.from(activeTrendMetrics)
+  );
+};
 
 const getCompareParams = () => {
   const params = new URLSearchParams(window.location.search);
@@ -137,6 +151,8 @@ const loadProjectView = async () => {
   elements.subtitle.textContent = `Stored report runs for ${data.projectKey}`;
   currentProjectKey = data.projectKey;
   showProjectView();
+  projectHistory = data.storedReports.slice().reverse();
+  renderProjectTrend();
   elements.folders.textContent = '';
 
   if (data.storedReports.length === 0) {
@@ -150,7 +166,11 @@ const loadProjectView = async () => {
     const link = document.createElement('a');
     link.href = `/reports/${data.idx}/${encodeURIComponent(String(storedReport.timestamp))}`;
     link.textContent = `${storedReport.report}`;
+    const stats = document.createElement('span');
+    stats.className = 'run-stats';
+    stats.textContent = `${storedReport.fileCount} files | ${storedReport.totalComplexity} total complexity | ${Number(storedReport.averageComplexity).toFixed(2)} average/file`;
     item.append(link);
+    item.append(stats);
     elements.folders.append(item);
   });
 
@@ -168,7 +188,11 @@ const loadProjectView = async () => {
     elements.compareB.append(optionB);
   });
 
-  elements.generateProject.onclick = () => runAction(`/reports/${data.idx}`, 'POST', 'Project reports processed.');
+  elements.generateProject.onclick = () => runAction(
+    `/reports/${data.idx}`,
+    'POST',
+    (result) => `${result.reportsGenerated} reports generated from ${result.gitlogRows} gitlog rows.`
+  );
 
   elements.compareForm.onsubmit = async (event) => {
     event.preventDefault();
@@ -232,7 +256,7 @@ const loadSummaryView = async () => {
   }
 
   elements.title.textContent = data.report.NAME;
-  elements.subtitle.textContent = `Summary for ${data.targetName}`;
+  elements.subtitle.textContent = `Summary for ${data.targetName} | ${data.storedReport.fileCount} files | ${data.storedReport.totalComplexity} total complexity | ${Number(data.storedReport.averageComplexity).toFixed(2)} average/file`;
   showSummaryView();
   elements.summaryTitle.textContent = data.targetName;
   elements.summaryBack.href = `/reports/${reportIdx}`;
@@ -258,7 +282,10 @@ const runAction = async (url, method, successMessage) => {
     if (!response.ok) {
       throw new Error(data.error || 'Request failed.');
     }
-    setStatus(successMessage, 'success');
+    const resultMessage = typeof successMessage === 'function'
+      ? successMessage(data)
+      : successMessage;
+    setStatus(resultMessage, 'success');
     await loadCurrentView();
   } catch (error) {
     setStatus(error instanceof Error ? error.message : 'Request failed.', 'error');
@@ -292,6 +319,24 @@ elements.compareBack.addEventListener('click', () => {
 elements.refresh.addEventListener('click', () => {
   loadCurrentView().catch((error) => {
     setStatus(error instanceof Error ? error.message : 'Unable to refresh.', 'error');
+  });
+});
+
+elements.chartToggles.forEach((toggle) => {
+  toggle.addEventListener('click', () => {
+    const metric = toggle.dataset.metric;
+    if (!metric) {
+      return;
+    }
+
+    if (activeTrendMetrics.has(metric)) {
+      activeTrendMetrics.delete(metric);
+    } else {
+      activeTrendMetrics.add(metric);
+    }
+
+    toggle.setAttribute('aria-pressed', String(activeTrendMetrics.has(metric)));
+    renderProjectTrend();
   });
 });
 

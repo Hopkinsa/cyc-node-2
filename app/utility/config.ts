@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import * as path from 'path';
 import {
@@ -15,7 +15,13 @@ type RawConfig = {
   REPORTS?: IReportConfig[];
 };
 
-const CONFIG_PATH = './config.json';
+const CONFIG_PATH = path.resolve('./config.json');
+const DEFAULT_CONFIG = {
+  SERVER_PORT: 3000,
+  PATH: '',
+  MODE: '',
+  PROJECTS: [],
+};
 
 let config: IAppConfig = {
   SERVER_PORT: null,
@@ -84,7 +90,11 @@ const createNxReportsFromProjectList = (
     LIB_SCOPE: projectName,
   }));
 
-if (existsSync(CONFIG_PATH)) {
+if (!existsSync(CONFIG_PATH)) {
+  await writeFile(CONFIG_PATH, `${JSON.stringify(DEFAULT_CONFIG, null, 2)}\n`);
+}
+
+{
   const configFile = await readFile(CONFIG_PATH, 'utf8');
   const parsedConfig = JSON.parse(configFile) as RawConfig;
 

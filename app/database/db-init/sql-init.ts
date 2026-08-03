@@ -6,13 +6,51 @@ CREATE TABLE IF NOT EXISTS gitlog (
 );
 `;
 
+export const EXTRACTION_STATE_TABLE = `
+CREATE TABLE IF NOT EXISTS extraction_state (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+`;
+
 export const REPORT_TABLE = `
 CREATE TABLE IF NOT EXISTS reports (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     project TEXT NOT NULL,
     report TEXT NOT NULL,
-    timestamp INTEGER NOT NULL
+        timestamp INTEGER NOT NULL,
+        fileCount INTEGER NOT NULL DEFAULT 0,
+        totalComplexity REAL NOT NULL DEFAULT 0,
+        averageComplexity REAL NOT NULL DEFAULT 0
 );
+`;
+
+export const REPORT_STATS_MIGRATIONS = [
+    'ALTER TABLE reports ADD COLUMN fileCount INTEGER NOT NULL DEFAULT 0',
+    'ALTER TABLE reports ADD COLUMN totalComplexity REAL NOT NULL DEFAULT 0',
+    'ALTER TABLE reports ADD COLUMN averageComplexity REAL NOT NULL DEFAULT 0',
+];
+
+export const BACKFILL_REPORT_STATS = `
+UPDATE reports
+SET fileCount = (
+            SELECT COUNT(*) FROM files WHERE files.report_id = reports.id
+        ),
+        totalComplexity = (
+            SELECT COALESCE(SUM(files.fileComplexity), 0)
+            FROM files WHERE files.report_id = reports.id
+        ),
+        averageComplexity = CASE
+            WHEN (
+                SELECT COUNT(*) FROM files WHERE files.report_id = reports.id
+            ) > 0 THEN (
+                SELECT COALESCE(SUM(files.fileComplexity), 0)
+                FROM files WHERE files.report_id = reports.id
+            ) * 1.0 / (
+                SELECT COUNT(*) FROM files WHERE files.report_id = reports.id
+            )
+            ELSE 0
+        END;
 `;
 
 export const FILE_TABLE = `
