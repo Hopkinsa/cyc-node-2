@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import config from './config.ts';
+import { isNxReportConfig } from '../interface/config.interface.ts';
 
 import DBRead from '../database/db-read/db-read.ts';
 
@@ -59,8 +60,19 @@ class ComparisonReport {
     }
 
     const reportTarget = targets.project.toUpperCase();
+    const reportConfig = REPORTS.find(
+      (report) =>
+        (isNxReportConfig(report) ? report.PROJECT : report.FOLDER) ===
+        targets.project
+    );
 
-    const complexityObj = DBRead.processCompareData(await DBRead.compareReports(report1.id, report2.id));
+    const complexityObj = DBRead.processCompareData(
+      await DBRead.compareReports(
+        report1.id,
+        report2.id,
+        reportConfig?.EXCLUDE_FILES
+      )
+    );
 
     res.status(200).json({ reportTarget, targetNames, complexityObj });
   };

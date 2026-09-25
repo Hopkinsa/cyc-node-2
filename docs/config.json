@@ -2,5 +2,19 @@
     "SERVER_PORT": 3000,
     "PATH": "/absolute/path/to/project",
     "MODE": "nx",
-    "PROJECTS": [ "project-name" ]
+    "PROJECTS": [ "project-name" ],
+    "REPORTS": [
+        {
+            "NAME": "project-name",
+            "PATH": "/absolute/path/to/project",
+            "FOLDER": "project-folder",
+            "MODE": "nx",
+            "PROJECT": "project-name",
+            "APP_ROOT": "apps/project-name",
+            "LIB_SCOPE": "scope",
+            "EXCLUDE_FILES": [
+                "path/to/file/filename"
+            ]
+       }
+    ]
 }

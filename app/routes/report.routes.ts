@@ -10,7 +10,11 @@ export const REPORT_ROUTES = Router();
 // Request handling
 REPORT_ROUTES.get('/dashboard', Report.getDashboard);
 
+REPORT_ROUTES.get('/help', Report.getHelp);
+
 REPORT_ROUTES.get('/api/dashboard', Report.getDashboardData);
+
+REPORT_ROUTES.put('/api/reports/:idx/exclusions', Report.updateReportExclusions);
 
 REPORT_ROUTES.get('/api/reports/:idx/:tgt', Summary.getSummaryData);
 

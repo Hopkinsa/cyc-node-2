@@ -6,6 +6,7 @@ export interface IReportConfigBase {
   FOLDER: string;
   MODE?: ReportMode;
   INSTALL_PATH?: string;
+  EXCLUDE_FILES?: string[];
 }
 
 export interface INxReportConfig extends IReportConfigBase {

@@ -76,6 +76,14 @@ Use `REPORTS` when a project does not follow the standard Nx layout or when conf
 
 `NAME`, `PATH`, and `FOLDER` are required for every report. Nx reports additionally require `PROJECT`, `APP_ROOT`, and `LIB_SCOPE`.
 
+Each report can also include an `EXCLUDE_FILES` array of exact file paths or `%` wildcard patterns. These files are excluded from report metrics, summaries, and comparisons:
+
+```json
+{
+  "EXCLUDE_FILES": ["apps/web-app/src/vendor.js", "%/third-party/%"]
+}
+```
+
 ## Normal Workflow
 
 1. Open the dashboard.
@@ -103,6 +111,7 @@ The project page contains:
 - **Project history**: a responsive line chart across all stored runs. Use **Files**, **Total complexity**, and **Average complexity** to toggle individual lines. The chart key and vertical scale update to match the selected metrics.
 - **Available runs**: each run lists its date, tested-file count, total file complexity, and average complexity per file. Select a run to view its file-level results.
 - **Compare stored runs**: choose two runs and compare their file metrics. New, deleted, and changed files are included in the comparison.
+- **Third-party files**: add, amend, or remove per-project file exclusion patterns. Save changes to refresh every stored run's visible file list and metrics immediately; regeneration is not required.
 - **Refresh data**: reloads the data for the current page. It does not synchronize gitlog or generate reports.
 
 ## How Commit Synchronization Works

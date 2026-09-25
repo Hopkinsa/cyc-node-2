@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import * as path from 'node:path';
-import config from '../utility/config.ts';
+import config, { updateReportExclusions } from '../utility/config.ts';
 import { IReportConfig } from '../interface/config.interface.ts';
 import GitlogReporting from './gitlog-reporting.ts';
 import DBRead from '../database/db-read/db-read.ts';
@@ -17,6 +17,10 @@ class Report {
     res.sendFile(path.join(STATIC_PATH, 'reports-browser.html'));
   };
 
+  static getHelp = async (_req: Request, res: Response): Promise<void> => {
+    res.sendFile(path.join(STATIC_PATH, 'reports-help.html'));
+  };
+
   static getDashboardData = async (_req: Request, res: Response): Promise<void> => {
     const [gitlogRows, storedReports] = await Promise.all([
       DBRead.getGitLog(),
@@ -29,7 +33,18 @@ class Report {
         const projectReports = storedReports.filter(
           (storedReport) => storedReport.project === projectKey
         );
-        const reportsByNewest = projectReports.slice().sort(
+        const projectReportsWithCurrentStats = await Promise.all(
+          projectReports.map(async (storedReport) => ({
+            ...storedReport,
+            ...(storedReport.id
+              ? await DBRead.getReportFileStats(
+                  storedReport.id,
+                  report.EXCLUDE_FILES
+                )
+              : {}),
+          }))
+        );
+        const reportsByNewest = projectReportsWithCurrentStats.slice().sort(
           (left, right) => right.timestamp - left.timestamp
         );
         const latestReport = reportsByNewest[0] ?? null;
@@ -47,7 +62,7 @@ class Report {
                 averageComplexity: latestReport.averageComplexity,
               }
             : null,
-          reportHistory: projectReports
+          reportHistory: projectReportsWithCurrentStats
             .slice()
             .sort((left, right) => left.timestamp - right.timestamp),
         };
@@ -70,12 +85,53 @@ class Report {
       .filter((storedReport) => storedReport.project === projectKey)
       .sort((left, right) => right.timestamp - left.timestamp);
 
+    const storedReportsWithHiddenStats = await Promise.all(
+      storedReports.map(async (storedReport) => ({
+        ...storedReport,
+        ...(storedReport.id
+          ? await DBRead.getReportFileStats(
+              storedReport.id,
+              report.EXCLUDE_FILES
+            )
+          : {
+              fileCount: 0,
+              totalComplexity: 0,
+              averageComplexity: 0,
+              hiddenFileCount: 0,
+              hiddenComplexity: 0,
+            }),
+      }))
+    );
+
     res.status(200).json({
       idx,
       report,
       projectKey,
-      storedReports,
+      storedReports: storedReportsWithHiddenStats,
     });
+  };
+
+  static updateReportExclusions = async (
+    req: Request,
+    res: Response
+  ): Promise<void> => {
+    try {
+      const idx = Number.parseInt(req.params['idx'] as string, 10);
+      if (Number.isNaN(idx)) {
+        res.status(400).json({ error: 'Invalid report index.' });
+        return;
+      }
+
+      const report = await updateReportExclusions(idx, req.body?.EXCLUDE_FILES);
+      res.status(200).json({ report });
+    } catch (error) {
+      res.status(400).json({
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Unable to update report exclusions.',
+      });
+    }
   };
 
   // Handling requests

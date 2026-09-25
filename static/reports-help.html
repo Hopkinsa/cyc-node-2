@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reporting Help</title>
+    <link rel="stylesheet" href="/static/reports.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Complexity reporting</p>
+          <h1>Reporting help</h1>
+          <p class="lede">Use reports to review complexity over time, inspect files, and compare two stored runs.</p>
+        </div>
+        <div class="hero-actions">
+          <a class="secondary button-link" href="/dashboard">Back to dashboard</a>
+        </div>
+      </header>
+
+      <main class="help-layout">
+        <section class="panel help-section">
+          <div class="panel-header">
+            <div>
+              <p class="label">Reports</p>
+              <h2>Review a project</h2>
+            </div>
+          </div>
+          <div class="help-grid">
+            <article>
+              <h3>Dashboard</h3>
+              <p>See the configured projects, their GitLog rows, stored report count, latest run, and the average-complexity trend. Sync GitLog to import matching commits, or generate reports for one project or all projects.</p>
+            </article>
+            <article>
+              <h3>Project reports</h3>
+              <p>Choose a project to view its stored runs, their file count, total complexity, average complexity per file, and a trend chart. Toggle Files, Total complexity, and Average complexity to change the chart.</p>
+            </article>
+            <article>
+              <h3>Run summary</h3>
+              <p>Open a stored run to inspect every included file. Sort by any column and filter Complexity, Functions, Complexity Total, or Complexity Average with minimum and maximum values.</p>
+            </article>
+            <article>
+              <h3>File exclusions</h3>
+              <p>Add or remove project-specific path patterns. Use <code>%</code> as a wildcard. Saved exclusions immediately change the displayed report, summary, and comparison statistics; report data remains stored.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="panel help-section">
+          <div class="panel-header">
+            <div>
+              <p class="label">Comparisons</p>
+              <h2>Compare two stored runs</h2>
+            </div>
+          </div>
+          <div class="help-grid">
+            <article>
+              <h3>Select runs</h3>
+              <p>From a project's Compare section, select any two stored runs. The older timestamp is treated as the first run and the newer timestamp as the second run, regardless of selection order.</p>
+            </article>
+            <article>
+              <h3>Read the result</h3>
+              <p>Rows are matched by file path. The values in parentheses are the first and second run when they differ. A green row is a file added in the second run; a red row is a file that existed only in the first run.</p>
+            </article>
+            <article>
+              <h3>Changes</h3>
+              <p>For files in both runs, Complexity Change is second-run Complexity minus first-run Complexity. Average Change uses the same subtraction for Complexity Average. A plus sign means the value increased.</p>
+            </article>
+            <article>
+              <h3>Scope</h3>
+              <p>The same built-in and project-specific exclusions apply to comparisons. Excluded files do not appear and do not affect report-level statistics.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="panel help-section">
+          <div class="panel-header">
+            <div>
+              <p class="label">Calculations</p>
+              <h2>How complexity values are computed</h2>
+            </div>
+          </div>
+          <div class="calculation-list">
+            <div class="calculation-row">
+              <h3>Function Complexity</h3>
+              <p>The cyclomatic complexity reported for a function. The report uses ESLint's complexity result when available. Its fallback starts at 1 and adds the function's control-flow, expression, and default-parameter decision points.</p>
+            </div>
+            <div class="calculation-row">
+              <h3>Functions</h3>
+              <p>The number of function entries found in the file.</p>
+            </div>
+            <div class="calculation-row">
+              <h3>Complexity</h3>
+              <p>The file's stored complexity: the sum of its function complexities. When an imported function report has repeated function names in one file, this value counts each name once to retain the original report behavior.</p>
+            </div>
+            <div class="calculation-row">
+              <h3>Complexity Total</h3>
+              <p>The sum of all function-entry complexities in the file, including repeated function names.</p>
+            </div>
+            <div class="calculation-row">
+              <h3>Complexity Average</h3>
+              <p>File Complexity divided by Functions. A file with no functions has an average of 0.</p>
+            </div>
+            <div class="calculation-row">
+              <h3>Report Total Complexity</h3>
+              <p>The sum of the included files' stored Complexity values.</p>
+            </div>
+            <div class="calculation-row">
+              <h3>Report Average Complexity</h3>
+              <p>Report Total Complexity divided by the number of included files. It is an average per file, not an average of the file averages. A report with no included files has an average of 0.</p>
+            </div>
+          </div>
+          <aside class="help-note">
+            <strong>Built-in exclusions</strong>
+            <span>Files matching ESLint configs, <code>mock</code>, <code>test-setup</code>, <code>.json</code>, or <code>libs/shared/</code> are always hidden from visible report statistics.</span>
+          </aside>
+        </section>
+
+        <section class="panel help-section">
+          <div class="panel-header">
+            <div>
+              <p class="label">Complexity key</p>
+              <h2>Score colours</h2>
+            </div>
+          </div>
+          <div class="score-key">
+            <span><i class="complexityScore minimum">1-5</i> Minimum</span>
+            <span><i class="complexityScore minor">6-10</i> Minor</span>
+            <span><i class="complexityScore medium">11-20</i> Medium</span>
+            <span><i class="complexityScore high">21+</i> High</span>
+          </div>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

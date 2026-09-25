@@ -18,6 +18,7 @@ import { STATIC_PATH } from './helpers.ts';
 import DBUpdate from '../database/db-update/db-update.ts';
 
 import DBRead from '../database/db-read/db-read.ts';
+import { shouldIncludeReportFile } from '../database/report-file-filter.ts';
 
 const REPORTS = config.REPORTS;
 
@@ -55,6 +56,13 @@ const parseFunctionReportLine = (line: string): functionComplexity | null => {
 };
 
 class SummaryReport {
+  static calculateFileAverageComplexity = (
+    fileComplexity: number,
+    functionCount: number
+  ): number => {
+    return functionCount > 0 ? fileComplexity / functionCount : 0;
+  };
+
   static dynamicSort = (properties: any) => {
     return function (a: any, b: any): any {
       for (const prop of properties) {
@@ -89,7 +97,10 @@ class SummaryReport {
             functions: functionArray,
             functionTotal: functionArray.length,
             complexityTotal: complexityTotal,
-            complexityAverage: complexityTotal / functionArray.length,
+            complexityAverage: SummaryReport.calculateFileAverageComplexity(
+              complexity,
+              functionArray.length
+            ),
           });
         }
         file = item.file;
@@ -120,8 +131,10 @@ class SummaryReport {
         functions: functionArray,
         functionTotal: functionArray.length,
         complexityTotal,
-        complexityAverage:
-          functionArray.length > 0 ? complexityTotal / functionArray.length : 0,
+        complexityAverage: SummaryReport.calculateFileAverageComplexity(
+          complexity,
+          functionArray.length
+        ),
       });
     }
 
@@ -155,12 +168,21 @@ class SummaryReport {
   static createDataFromOutput = async (
     outputPath: string,
     workspaceRoot: string,
-    reportData: IReports
+    reportData: IReports,
+    excludedFiles: string[] = []
   ): Promise<void> => {
     const loadedData = await SummaryReport.loadFunctionReportFromOutput(outputPath);
     const tmpObj = await SummaryReport.processSummary(loadedData);
-    const fileCount = tmpObj.length;
-    const totalComplexity = tmpObj.reduce(
+    const visibleFiles = tmpObj.filter((fileItem) =>
+      shouldIncludeReportFile(
+        path.isAbsolute(fileItem.file)
+          ? path.relative(workspaceRoot, fileItem.file)
+          : path.normalize(fileItem.file),
+        excludedFiles
+      )
+    );
+    const fileCount = visibleFiles.length;
+    const totalComplexity = visibleFiles.reduce(
       (total, fileItem) => total + fileItem.complexity,
       0
     );
@@ -220,7 +242,10 @@ class SummaryReport {
       return;
     }
 
-    const complexityObj = await DBRead.getReportById(storedReport.id);
+    const [complexityObj, hiddenStats] = await Promise.all([
+      DBRead.getReportById(storedReport.id, report.EXCLUDE_FILES),
+      DBRead.getReportFileStats(storedReport.id, report.EXCLUDE_FILES),
+    ]);
     const targetName = storedReport.report;
 
     res.status(200).json({
@@ -228,7 +253,10 @@ class SummaryReport {
       target,
       targetName,
       idx,
-      storedReport,
+      storedReport: {
+        ...storedReport,
+        ...hiddenStats,
+      },
       complexityObj,
       hasHtmlReport: false,
     });

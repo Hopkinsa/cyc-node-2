@@ -392,7 +392,8 @@ class GitlogReporting {
       await SummaryReport.createDataFromOutput(
         outputPath,
         report.PATH,
-        reportRow
+        reportRow,
+        report.EXCLUDE_FILES
       );
 
       return true;

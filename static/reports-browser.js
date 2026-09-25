@@ -21,6 +21,9 @@ const elements = {
   refresh: document.querySelector('#refresh'),
   projectTrendChart: document.querySelector('#project-trend-chart'),
   chartToggles: document.querySelectorAll('.chart-toggle'),
+  exclusionList: document.querySelector('#exclusion-list'),
+  addExclusion: document.querySelector('#add-exclusion'),
+  saveExclusions: document.querySelector('#save-exclusions'),
 };
 
 const [_, reportsSegment, idxSegment, targetSegment] = window.location.pathname.split('/');
@@ -30,7 +33,20 @@ const compareAParam = new URLSearchParams(window.location.search).get('compareA'
 const compareBParam = new URLSearchParams(window.location.search).get('compareB');
 let currentProjectKey = null;
 let projectHistory = [];
+let exclusionPatterns = [];
 const activeTrendMetrics = new Set(['fileCount', 'averageComplexity']); // 'totalComplexity',
+const summaryTableState = {
+  rows: [],
+  columns: [],
+  sortKey: 'file',
+  sortDirection: 'asc',
+  filters: {
+    complexity: { min: '', max: '' },
+    functionTotal: { min: '', max: '' },
+    complexityTotal: { min: '', max: '' },
+    complexityAverage: { min: '', max: '' },
+  },
+};
 
 const renderProjectTrend = () => {
   renderReportTrend(
@@ -38,6 +54,46 @@ const renderProjectTrend = () => {
     projectHistory,
     Array.from(activeTrendMetrics)
   );
+};
+
+const getExclusionPatterns = () => Array.from(
+  elements.exclusionList.querySelectorAll('input')
+).map((input) => input.value.trim()).filter(Boolean);
+
+const renderExclusionList = () => {
+  elements.exclusionList.textContent = '';
+
+  if (exclusionPatterns.length === 0) {
+    const emptyState = document.createElement('p');
+    emptyState.className = 'empty-exclusions';
+    emptyState.textContent = 'No additional files are excluded.';
+    elements.exclusionList.append(emptyState);
+    return;
+  }
+
+  exclusionPatterns.forEach((pattern, index) => {
+    const row = document.createElement('div');
+    row.className = 'exclusion-row';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = pattern;
+    input.placeholder = 'Path or % wildcard pattern';
+    input.setAttribute('aria-label', `Excluded file ${index + 1}`);
+
+    const removeButton = document.createElement('button');
+    removeButton.type = 'button';
+    removeButton.className = 'secondary exclusion-remove';
+    removeButton.textContent = 'Remove';
+    removeButton.addEventListener('click', () => {
+      exclusionPatterns = getExclusionPatterns();
+      exclusionPatterns.splice(index, 1);
+      renderExclusionList();
+    });
+
+    row.append(input, removeButton);
+    elements.exclusionList.append(row);
+  });
 };
 
 const getCompareParams = () => {
@@ -95,23 +151,387 @@ const setBusy = (busy) => {
   });
 };
 
-const formatTableValue = (columnKey, value) => {
+const formatHiddenStats = (storedReport) => {
+  if (!storedReport.hiddenFileCount) {
+    return '';
+  }
+
+  return ` | ${storedReport.hiddenFileCount} hidden files filtered out (${storedReport.hiddenComplexity} complexity)`;
+};
+
+const formatTableValue = (columnKey, value, comparisonRow = null) => {
+  const comparisonMetricKeys = {
+    complexity: ['compareAComplexity', 'compareBComplexity'],
+    functionTotal: ['compareAFunctionTotal', 'compareBFunctionTotal'],
+    complexityAverage: ['compareAComplexityAverage', 'compareBComplexityAverage'],
+  };
+
+  const formatMetric = (metricKey, metricValue) => {
+    if (metricValue == null) {
+      return '-';
+    }
+
+    if (metricKey === 'complexityAverage' && typeof metricValue === 'number') {
+      const formattedValue = String(Number(metricValue.toFixed(2)));
+      const className = metricValue < 6 ? 'minimum' : metricValue < 11 ? 'minor' : metricValue < 21 ? 'medium' : 'high';
+
+      return `<span class="complexityScore ${className}">${formattedValue}</span>`;
+    }
+
+    return String(metricValue);
+  };
+
+  const comparisonKeys = comparisonMetricKeys[columnKey];
+  if (comparisonRow && comparisonKeys) {
+    const compareAValue = comparisonRow[comparisonKeys[0]];
+    const compareBValue = comparisonRow[comparisonKeys[1]];
+
+    if (compareAValue === compareBValue) {
+      return formatMetric(columnKey, compareAValue);
+    }
+
+    return `${formatMetric(columnKey, compareAValue)} (${formatMetric(columnKey, compareBValue)})`;
+  }
+
   if (value == null) {
     return '';
   }
 
   if (
-    (columnKey === 'complexityAverage' || columnKey === 'complexityAverageChange') &&
+    (columnKey === 'complexityChange' || columnKey === 'complexityAverageChange') &&
     typeof value === 'number'
   ) {
     let val = String(Number(value.toFixed(2)));
+    let plusMinus = value > 0 ? '+' : '';
 
-    let calClass = value < 6 ? 'minimum' : value < 11 ? 'minor' : value < 21 ? 'medium' : 'high'
+    return `${plusMinus}${val}`;
+  }
 
-    return `<span class="complexityScore ${calClass}">${val}</span>`;
+  if (columnKey === 'complexityAverage') {
+    return formatMetric(columnKey, value);
   }
 
   return String(value);
+};
+
+const cellClass = (status) => {
+  if (status === null || status === undefined) {
+    return '';
+  }
+  if (String(status).trim() === '') {
+    return '';
+  }
+  if (String(status).toUpperCase() === 'N') {
+    return 'added';
+  }
+  if (String(status).toUpperCase() === 'D') {
+    return 'removed';
+  }
+}
+
+const parseFilterNumber = (value) => {
+  if (value === '') {
+    return null;
+  }
+
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? numericValue : null;
+};
+
+const compareColumnValues = (left, right, columnKey, direction) => {
+  const sortMultiplier = direction === 'asc' ? 1 : -1;
+
+  if (columnKey === 'file') {
+    return String(left ?? '').localeCompare(String(right ?? ''), undefined, {
+      numeric: true,
+      sensitivity: 'base',
+    }) * sortMultiplier;
+  }
+
+  const leftNumber = Number(left ?? 0);
+  const rightNumber = Number(right ?? 0);
+
+  if (leftNumber === rightNumber) {
+    return 0;
+  }
+
+  return (leftNumber - rightNumber) * sortMultiplier;
+};
+
+const applySummaryFilters = (rows) => rows.filter((row) => (
+  Object.entries(summaryTableState.filters).every(([key, bounds]) => {
+    const minValue = parseFilterNumber(bounds.min);
+    const maxValue = parseFilterNumber(bounds.max);
+    const rowValue = Number(row[key]);
+
+    if (!Number.isFinite(rowValue)) {
+      return minValue === null && maxValue === null;
+    }
+
+    if (minValue !== null && rowValue < minValue) {
+      return false;
+    }
+
+    if (maxValue !== null && rowValue > maxValue) {
+      return false;
+    }
+
+    return true;
+  })
+));
+
+const getFilteredAndSortedSummaryRows = () => {
+  const filteredRows = applySummaryFilters(summaryTableState.rows).slice();
+
+  if (!summaryTableState.sortKey || !summaryTableState.sortDirection) {
+    return filteredRows;
+  }
+
+  return filteredRows.sort((left, right) => {
+    const result = compareColumnValues(
+      left[summaryTableState.sortKey],
+      right[summaryTableState.sortKey],
+      summaryTableState.sortKey,
+      summaryTableState.sortDirection
+    );
+
+    if (result !== 0) {
+      return result;
+    }
+
+    return compareColumnValues(left.file, right.file, 'file', 'asc');
+  });
+};
+
+const updateSummarySort = (columnKey) => {
+  if (summaryTableState.sortKey !== columnKey) {
+    summaryTableState.sortKey = columnKey;
+    summaryTableState.sortDirection = 'asc';
+    return;
+  }
+
+  if (summaryTableState.sortDirection === 'asc') {
+    summaryTableState.sortDirection = 'desc';
+    return;
+  }
+
+  if (summaryTableState.sortDirection === 'desc') {
+    summaryTableState.sortKey = null;
+    summaryTableState.sortDirection = null;
+    return;
+  }
+
+  summaryTableState.sortKey = columnKey;
+  summaryTableState.sortDirection = 'asc';
+};
+
+const getComplexityClass = (complexity) => {
+  if (complexity < 6) {
+    return 'minimum';
+  }
+
+  if (complexity < 11) {
+    return 'minor';
+  }
+
+  if (complexity < 21) {
+    return 'medium';
+  }
+
+  return 'high';
+};
+
+const renderFunctionDetails = (functions) => {
+  const details = document.createElement('div');
+  details.className = 'function-details';
+
+  if (functions.length === 0) {
+    const empty = document.createElement('p');
+    empty.className = 'empty-function-details';
+    empty.textContent = 'No functions were stored for this file.';
+    details.append(empty);
+    return details;
+  }
+
+  const table = document.createElement('table');
+  table.className = 'function-table';
+  const thead = document.createElement('thead');
+  const headerRow = document.createElement('tr');
+  ['Function', 'Line', 'Complexity'].forEach((label) => {
+    const header = document.createElement('th');
+    header.textContent = label;
+    headerRow.append(header);
+  });
+  thead.append(headerRow);
+  table.append(thead);
+
+  const tbody = document.createElement('tbody');
+  functions.forEach((functionItem) => {
+    const row = document.createElement('tr');
+    const name = document.createElement('td');
+    name.textContent = functionItem.name;
+    const line = document.createElement('td');
+    line.textContent = String(functionItem.line);
+    const complexity = document.createElement('td');
+    const score = document.createElement('span');
+    score.className = `complexityScore ${getComplexityClass(functionItem.complexity)}`;
+    score.textContent = String(functionItem.complexity);
+    complexity.append(score);
+    row.append(name, line, complexity);
+    tbody.append(row);
+  });
+  table.append(tbody);
+  details.append(table);
+  return details;
+};
+
+const renderSummaryTable = () => {
+  elements.summaryTable.textContent = '';
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'report-table-shell';
+
+  const toolbar = document.createElement('div');
+  toolbar.className = 'table-toolbar';
+
+  const summary = document.createElement('p');
+  const visibleRows = getFilteredAndSortedSummaryRows();
+  summary.className = 'table-results';
+  summary.textContent = `${visibleRows.length} of ${summaryTableState.rows.length} files shown`;
+  toolbar.append(summary);
+  wrapper.append(toolbar);
+
+  const table = document.createElement('table');
+  const thead = document.createElement('thead');
+  const headRow = document.createElement('tr');
+  const filterRow = document.createElement('tr');
+  filterRow.className = 'filter-row';
+
+  summaryTableState.columns.forEach((column) => {
+    const th = document.createElement('th');
+    if (column.key === 'functions') {
+      th.textContent = column.label;
+    } else {
+      const sortButton = document.createElement('button');
+      sortButton.type = 'button';
+      sortButton.className = 'table-sort';
+      sortButton.textContent = column.label;
+      sortButton.setAttribute(
+        'aria-sort',
+        summaryTableState.sortKey === column.key ? summaryTableState.sortDirection : 'none'
+      );
+
+      if (summaryTableState.sortKey === column.key) {
+        sortButton.dataset.direction = summaryTableState.sortDirection;
+      }
+
+      sortButton.addEventListener('click', () => {
+        updateSummarySort(column.key);
+        renderSummaryTable();
+      });
+
+      th.append(sortButton);
+    }
+    headRow.append(th);
+
+    const filterCell = document.createElement('th');
+    if (Object.hasOwn(summaryTableState.filters, column.key)) {
+      const bounds = summaryTableState.filters[column.key];
+      const filterGroup = document.createElement('div');
+      filterGroup.className = 'filter-range';
+
+      const minInput = document.createElement('input');
+      minInput.type = 'number';
+      minInput.inputMode = 'decimal';
+      minInput.placeholder = 'Min';
+      minInput.value = bounds.min;
+      minInput.setAttribute('aria-label', `${column.label} minimum value`);
+      minInput.addEventListener('input', (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLInputElement)) {
+          return;
+        }
+
+        summaryTableState.filters[column.key].min = target.value;
+        renderSummaryTable();
+      });
+
+      const maxInput = document.createElement('input');
+      maxInput.type = 'number';
+      maxInput.inputMode = 'decimal';
+      maxInput.placeholder = 'Max';
+      maxInput.value = bounds.max;
+      maxInput.setAttribute('aria-label', `${column.label} maximum value`);
+      maxInput.addEventListener('input', (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLInputElement)) {
+          return;
+        }
+
+        summaryTableState.filters[column.key].max = target.value;
+        renderSummaryTable();
+      });
+
+      filterGroup.append(minInput, maxInput);
+      filterCell.append(filterGroup);
+    }
+    filterRow.append(filterCell);
+  });
+
+  thead.append(headRow, filterRow);
+  table.append(thead);
+
+  const tbody = document.createElement('tbody');
+  visibleRows.forEach((row, index) => {
+    const tr = document.createElement('tr');
+    summaryTableState.columns.forEach((column) => {
+      const td = document.createElement('td');
+      if (column.key === 'functions') {
+        const detailsId = `function-details-${index}`;
+        const toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'function-details-toggle secondary';
+        toggle.textContent = 'View functions';
+        toggle.setAttribute('aria-expanded', 'false');
+        toggle.setAttribute('aria-controls', detailsId);
+        toggle.addEventListener('click', () => {
+          const expanded = toggle.getAttribute('aria-expanded') === 'true';
+          toggle.setAttribute('aria-expanded', String(!expanded));
+          toggle.textContent = expanded ? 'View functions' : 'Hide functions';
+          detailRow.hidden = expanded;
+        });
+        td.append(toggle);
+      } else {
+        td.innerHTML = formatTableValue(column.key, row[column.key]);
+      }
+      tr.append(td);
+    });
+    tbody.append(tr);
+
+    const detailRow = document.createElement('tr');
+    detailRow.id = `function-details-${index}`;
+    detailRow.className = 'function-details-row';
+    detailRow.hidden = true;
+    const detailCell = document.createElement('td');
+    detailCell.colSpan = summaryTableState.columns.length;
+    detailCell.append(renderFunctionDetails(row.functions));
+    detailRow.append(detailCell);
+    tbody.append(detailRow);
+  });
+
+  if (visibleRows.length === 0) {
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = summaryTableState.columns.length;
+    td.className = 'empty-table';
+    td.textContent = 'No files match the current filters.';
+    tr.append(td);
+    tbody.append(tr);
+  }
+
+  table.append(tbody);
+  wrapper.append(table);
+  elements.summaryTable.append(wrapper);
 };
 
 const renderTable = (rows, columns) => {
@@ -129,9 +549,11 @@ const renderTable = (rows, columns) => {
   const tbody = document.createElement('tbody');
   rows.forEach((row) => {
     const tr = document.createElement('tr');
+    const indicatorClass = cellClass(row['status']);
     columns.forEach((column) => {
       const td = document.createElement('td');
-      td.innerHTML = formatTableValue(column.key, row[column.key]);
+      if (indicatorClass !== '') { td.classList.add(indicatorClass); }
+      td.innerHTML = formatTableValue(column.key, row[column.key], row);
       tr.append(td);
     });
     tbody.append(tr);
@@ -150,6 +572,8 @@ const loadProjectView = async () => {
   elements.title.textContent = data.report.NAME;
   elements.subtitle.textContent = `Stored report runs for ${data.projectKey}`;
   currentProjectKey = data.projectKey;
+  exclusionPatterns = data.report.EXCLUDE_FILES || [];
+  renderExclusionList();
   showProjectView();
   projectHistory = data.storedReports.slice().reverse();
   renderProjectTrend();
@@ -168,7 +592,7 @@ const loadProjectView = async () => {
     link.textContent = `${storedReport.report}`;
     const stats = document.createElement('span');
     stats.className = 'run-stats';
-    stats.textContent = `${storedReport.fileCount} files | ${storedReport.totalComplexity} total complexity | ${Number(storedReport.averageComplexity).toFixed(2)} average/file`;
+    stats.textContent = `${storedReport.fileCount} files | ${storedReport.totalComplexity} total complexity | ${Number(storedReport.averageComplexity).toFixed(2)} average/file${formatHiddenStats(storedReport)}`;
     item.append(link);
     item.append(stats);
     elements.folders.append(item);
@@ -193,6 +617,37 @@ const loadProjectView = async () => {
     'POST',
     (result) => `${result.reportsGenerated} reports generated from ${result.gitlogRows} gitlog rows.`
   );
+
+  elements.addExclusion.onclick = () => {
+    exclusionPatterns = getExclusionPatterns();
+    exclusionPatterns.push('');
+    renderExclusionList();
+    elements.exclusionList.querySelector('input:last-of-type')?.focus();
+  };
+
+  elements.saveExclusions.onclick = async () => {
+    setBusy(true);
+    setStatus('Saving file exclusions...');
+    try {
+      const responseSave = await fetch(`/api/reports/${reportIdx}/exclusions`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ EXCLUDE_FILES: getExclusionPatterns() }),
+      });
+      const savedData = await responseSave.json();
+      if (!responseSave.ok) {
+        throw new Error(savedData.error || 'Unable to save file exclusions.');
+      }
+
+      exclusionPatterns = savedData.report.EXCLUDE_FILES || [];
+      await loadProjectView();
+      setStatus('File exclusions saved. Report data updated.', 'success');
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'Unable to save file exclusions.', 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   elements.compareForm.onsubmit = async (event) => {
     event.preventDefault();
@@ -232,11 +687,9 @@ const loadCompareView = async (compareA, compareB) => {
         { key: 'file', label: 'File' },
         { key: 'complexity', label: 'Complexity' },
         { key: 'functionTotal', label: 'Functions' },
-        { key: 'complexityTotal', label: 'Complexity Total' },
         { key: 'complexityAverage', label: 'Complexity Average' },
-        { key: 'complexityTotalChange', label: 'Complexity Total Change' },
+        { key: 'complexityChange', label: 'Complexity Change' },
         { key: 'complexityAverageChange', label: 'Average Change' },
-        { key: 'status', label: 'Status' },
       ])
     );
 
@@ -256,20 +709,26 @@ const loadSummaryView = async () => {
   }
 
   elements.title.textContent = data.report.NAME;
-  elements.subtitle.textContent = `Summary for ${data.targetName} | ${data.storedReport.fileCount} files | ${data.storedReport.totalComplexity} total complexity | ${Number(data.storedReport.averageComplexity).toFixed(2)} average/file`;
+  elements.subtitle.textContent = `Summary for ${data.targetName} | ${data.storedReport.fileCount} files | ${data.storedReport.totalComplexity} total complexity | ${Number(data.storedReport.averageComplexity).toFixed(2)} average/file${formatHiddenStats(data.storedReport)}`;
   showSummaryView();
   elements.summaryTitle.textContent = data.targetName;
   elements.summaryBack.href = `/reports/${reportIdx}`;
-  elements.summaryTable.textContent = '';
-  elements.summaryTable.append(
-    renderTable(data.complexityObj, [
-      { key: 'file', label: 'File' },
-      { key: 'complexity', label: 'Complexity' },
-      { key: 'functionTotal', label: 'Functions' },
-      { key: 'complexityTotal', label: 'Complexity Total' },
-      { key: 'complexityAverage', label: 'Complexity Average' },
-    ])
-  );
+  summaryTableState.rows = data.complexityObj;
+  summaryTableState.columns = [
+    { key: 'file', label: 'File' },
+    { key: 'complexity', label: 'Complexity' },
+    { key: 'functionTotal', label: 'Functions' },
+    { key: 'complexityTotal', label: 'Complexity Total' },
+    { key: 'complexityAverage', label: 'Complexity Average' },
+    { key: 'functions', label: 'Function details' },
+  ];
+  summaryTableState.sortKey = 'file';
+  summaryTableState.sortDirection = 'asc';
+  Object.keys(summaryTableState.filters).forEach((key) => {
+    summaryTableState.filters[key].min = '';
+    summaryTableState.filters[key].max = '';
+  });
+  renderSummaryTable();
   setStatus('Summary data loaded.', 'success');
 };
 

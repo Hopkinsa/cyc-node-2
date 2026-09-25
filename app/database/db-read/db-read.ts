@@ -16,14 +16,14 @@ import {
   GET_ALL_FUNCTIONS,
   GET_ALL_GITLOG,
   GET_ALL_REPORT_FILE_FUNCTIONS,
-  GET_ALL_REPORT_FILES,
   GET_ALL_REPORTS,
   GET_EXTRACTION_STATE,
-  GET_COMPARE_REPORT_FILES,
   GET_GITLOG_BY_PROJECT,
   GET_REPORT_BY_NAME,
   GET_REPORT_BY_PROJECT_AND_TIMESTAMP,
+  GET_REPORT_FILES,
 } from './sql-read.ts';
+import { shouldIncludeReportFile } from '../report-file-filter.ts';
 
 const DEBUG = 'db-read | ';
 
@@ -117,6 +117,61 @@ class DBRead {
     return (data as IReports | undefined) ?? null;
   };
 
+  static getReportHiddenFileStats = async (
+    reportId: number | bigint,
+    excludedFiles: string[] = []
+  ): Promise<{ hiddenFileCount: number; hiddenComplexity: number }> => {
+    log.info_lv2(`${DEBUG}getReportHiddenFileStats - ${reportId}`);
+
+    const files = DBService.db.prepare(GET_REPORT_FILES).all(reportId) as IFiles[];
+    const hiddenFiles = files.filter(
+      (file) => !shouldIncludeReportFile(file.filename, excludedFiles)
+    );
+
+    return {
+      hiddenFileCount: hiddenFiles.length,
+      hiddenComplexity: hiddenFiles.reduce(
+        (total, file) => total + file.fileComplexity,
+        0
+      ),
+    };
+  };
+
+  static getReportFileStats = async (
+    reportId: number | bigint,
+    excludedFiles: string[] = []
+  ): Promise<{
+    fileCount: number;
+    totalComplexity: number;
+    averageComplexity: number;
+    hiddenFileCount: number;
+    hiddenComplexity: number;
+  }> => {
+    const files = DBService.db.prepare(GET_REPORT_FILES).all(reportId) as IFiles[];
+    const visibleFiles = files.filter((file) =>
+      shouldIncludeReportFile(file.filename, excludedFiles)
+    );
+    const totalComplexity = visibleFiles.reduce(
+      (total, file) => total + file.fileComplexity,
+      0
+    );
+    const hiddenFiles = files.filter(
+      (file) => !shouldIncludeReportFile(file.filename, excludedFiles)
+    );
+
+    return {
+      fileCount: visibleFiles.length,
+      totalComplexity,
+      averageComplexity:
+        visibleFiles.length > 0 ? totalComplexity / visibleFiles.length : 0,
+      hiddenFileCount: hiddenFiles.length,
+      hiddenComplexity: hiddenFiles.reduce(
+        (total, file) => total + file.fileComplexity,
+        0
+      ),
+    };
+  };
+
   static getFiles = async (): Promise<void> => {
     log.info_lv2(`${DEBUG}getFiles`);
 
@@ -150,13 +205,23 @@ class DBRead {
     const result: dataObjectCompare[] = [];
 
     for (const { r1, r2 } of map.values()) {
+      const compareValues = {
+        compareAComplexity: r1?.complexity,
+        compareBComplexity: r2?.complexity,
+        compareAFunctionTotal: r1?.functionTotal,
+        compareBFunctionTotal: r2?.functionTotal,
+        compareAComplexityAverage: r1?.complexityAverage,
+        compareBComplexityAverage: r2?.complexityAverage,
+      };
+
       if (r1 && !r2) {
-        result.push({ ...r1, status: 'D' });
+        result.push({ ...r1, ...compareValues, status: 'D' });
       } else if (!r1 && r2) {
-        result.push({ ...r2, status: 'N' });
+        result.push({ ...r2, ...compareValues, status: 'N' });
       } else if (r1 && r2) {
         result.push({
           ...r2,
+          ...compareValues,
           complexityChange: r2.complexity - r1.complexity,
           functionTotalChange: r2.functionTotal - r1.functionTotal,
           complexityTotalChange: r2.complexityTotal - r1.complexityTotal,
@@ -171,13 +236,19 @@ class DBRead {
 
   static compareReports = async (
     reportId1: number | bigint,
-    reportId2: number | bigint
+    reportId2: number | bigint,
+    excludedFiles: string[] = []
   ): Promise<any> => {
     log.info_lv2(`${DEBUG}compareReports - ${reportId1} : ${reportId2}`);
 
-    const fileData = DBService.db
-      .prepare(GET_COMPARE_REPORT_FILES)
-      .all(reportId1, reportId2) as IFiles[];
+    const fileData = [
+      ...(DBService.db.prepare(GET_REPORT_FILES).all(reportId1) as IFiles[]).map(
+        (file) => ({ ...file, report: '1' })
+      ),
+      ...(DBService.db.prepare(GET_REPORT_FILES).all(reportId2) as IFiles[]).map(
+        (file) => ({ ...file, report: '2' })
+      ),
+    ].filter((file) => shouldIncludeReportFile(file.filename, excludedFiles));
 
     const data: dataObjectCompare[] = [];
 
@@ -202,12 +273,17 @@ class DBRead {
     return data;
   };
 
-  static getReportById = async (reportId: number | bigint): Promise<any> => {
+  static getReportById = async (
+    reportId: number | bigint,
+    excludedFiles: string[] = []
+  ): Promise<any> => {
     log.info_lv2(`${DEBUG}getReportById - ${reportId}`);
 
-    const fileData = DBService.db
-      .prepare(GET_ALL_REPORT_FILES)
-      .all(reportId) as IFiles[];
+    const fileData = (DBService.db
+      .prepare(GET_REPORT_FILES)
+      .all(reportId) as IFiles[]).filter((file) =>
+      shouldIncludeReportFile(file.filename, excludedFiles)
+    );
     const data: dataObject[] = [];
 
     fileData.forEach((item) => {
