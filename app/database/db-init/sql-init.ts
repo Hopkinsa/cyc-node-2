@@ -1,3 +1,5 @@
+import { REPORT_VISIBLE_FILES_SQL } from '../report-file-filter.ts';
+
 export const GITLOG_TABLE = `
 CREATE TABLE IF NOT EXISTS gitlog (
     id TEXT PRIMARY KEY,
@@ -30,28 +32,6 @@ export const REPORT_STATS_MIGRATIONS = [
     'ALTER TABLE reports ADD COLUMN totalComplexity REAL NOT NULL DEFAULT 0',
     'ALTER TABLE reports ADD COLUMN averageComplexity REAL NOT NULL DEFAULT 0',
 ];
-
-export const BACKFILL_REPORT_STATS = `
-UPDATE reports
-SET fileCount = (
-            SELECT COUNT(*) FROM files WHERE files.report_id = reports.id
-        ),
-        totalComplexity = (
-            SELECT COALESCE(SUM(files.fileComplexity), 0)
-            FROM files WHERE files.report_id = reports.id
-        ),
-        averageComplexity = CASE
-            WHEN (
-                SELECT COUNT(*) FROM files WHERE files.report_id = reports.id
-            ) > 0 THEN (
-                SELECT COALESCE(SUM(files.fileComplexity), 0)
-                FROM files WHERE files.report_id = reports.id
-            ) * 1.0 / (
-                SELECT COUNT(*) FROM files WHERE files.report_id = reports.id
-            )
-            ELSE 0
-        END;
-`;
 
 export const FILE_TABLE = `
 CREATE TABLE IF NOT EXISTS files (

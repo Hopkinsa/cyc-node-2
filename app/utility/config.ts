@@ -38,6 +38,17 @@ const normalizeReportPath = (reportPath: string): string =>
 const normalizeRelativeConfigPath = (reportPath: string): string =>
   path.normalize(reportPath);
 
+const normalizeExcludedFiles = (
+  value: unknown,
+  location: string
+): string[] => {
+  if (!Array.isArray(value) || value.some((item) => typeof item !== 'string')) {
+    throw new Error(`${location} must be an array of file path patterns.`);
+  }
+
+  return [...new Set(value.map((item) => item.trim()).filter(Boolean))];
+};
+
 const validateReportConfig = (
   report: IReportConfig,
   index: number
@@ -53,6 +64,9 @@ const validateReportConfig = (
     PATH: normalizeReportPath(report.PATH),
     FOLDER: report.FOLDER.trim(),
     NAME: report.NAME.trim(),
+    EXCLUDE_FILES: report.EXCLUDE_FILES
+      ? normalizeExcludedFiles(report.EXCLUDE_FILES, `REPORTS[${index}].EXCLUDE_FILES`)
+      : undefined,
   };
 
   if (isNxReportConfig(normalizedReport)) {
@@ -120,5 +134,37 @@ if (!existsSync(CONFIG_PATH)) {
     REPORTS: reports,
   };
 }
+
+export const updateReportExclusions = async (
+  index: number,
+  excludedFiles: unknown
+): Promise<IReportConfig> => {
+  const report = config.REPORTS[index];
+  if (!report) {
+    throw new Error('Report configuration could not be found.');
+  }
+
+  const normalizedExclusions = normalizeExcludedFiles(
+    excludedFiles,
+    'EXCLUDE_FILES'
+  );
+  const updatedReport: IReportConfig = {
+    ...report,
+    EXCLUDE_FILES: normalizedExclusions,
+  };
+  const currentConfig = JSON.parse(await readFile(CONFIG_PATH, 'utf8')) as RawConfig;
+
+  config.REPORTS[index] = updatedReport;
+  await writeFile(
+    CONFIG_PATH,
+    `${JSON.stringify(
+      { ...currentConfig, REPORTS: config.REPORTS },
+      null,
+      2
+    )}\n`
+  );
+
+  return updatedReport;
+};
 
 export default config;

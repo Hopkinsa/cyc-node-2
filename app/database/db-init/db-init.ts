@@ -6,7 +6,6 @@ import {
   FUNCTION_TABLE,
   GITLOG_TABLE,
   EXTRACTION_STATE_TABLE,
-  BACKFILL_REPORT_STATS,
   REPORT_TABLE,
   REPORT_UNIQUE_INDEX,
   REPORT_STATS_MIGRATIONS,
@@ -41,8 +40,6 @@ export async function createDatabase(pathToDB: string): Promise<void> {
 
   db.prepare(FUNCTION_TABLE).run();
   log.info_lv3(`${DEBUG}Functions table opened successfully`);
-
-  db.prepare(BACKFILL_REPORT_STATS).run();
 
   db.prepare(REPORT_UNIQUE_INDEX).run();
   log.info_lv3(`${DEBUG}Reports unique index opened successfully`);

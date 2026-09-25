@@ -12,6 +12,8 @@ export interface IReports {
   fileCount: number;
   totalComplexity: number;
   averageComplexity: number;
+  hiddenFileCount?: number;
+  hiddenComplexity?: number;
 }
 
 export interface IFiles {

@@ -24,9 +24,15 @@ export type functionComplexity = {
 export type dataObjectCompare = {
   file: string;
   complexity: number;
+  compareAComplexity?: number;
+  compareBComplexity?: number;
   functionTotal: number;
+  compareAFunctionTotal?: number;
+  compareBFunctionTotal?: number;
   complexityTotal: number;
   complexityAverage: number;
+  compareAComplexityAverage?: number;
+  compareBComplexityAverage?: number;
   complexityChange: number;
   functionTotalChange: number;
   complexityTotalChange: number;

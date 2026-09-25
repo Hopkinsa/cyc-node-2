@@ -16,6 +16,7 @@
         </div>
         <div class="hero-actions">
           <a class="secondary button-link" href="/dashboard">Back to dashboard</a>
+          <a class="secondary button-link" href="/help">Help</a>
           <button id="refresh" class="primary" type="button">Refresh data</button>
         </div>
       </header>
@@ -65,6 +66,20 @@
             </label>
             <button class="primary" type="submit">Compare</button>
           </form>
+        </section>
+
+        <section class="panel exclusion-panel">
+          <div class="panel-header">
+            <div>
+              <p class="label">File exclusions</p>
+              <h2>Third-party files</h2>
+            </div>
+          </div>
+          <div id="exclusion-list" class="exclusion-list"></div>
+          <div class="exclusion-actions">
+            <button id="add-exclusion" class="secondary" type="button">Add file</button>
+            <button id="save-exclusions" class="primary" type="button">Save exclusions</button>
+          </div>
         </section>
       </main>
 
