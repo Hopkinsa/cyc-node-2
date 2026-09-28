@@ -341,6 +341,11 @@ const getComplexityClass = (complexity) => {
   return 'high';
 };
 
+const getHighestFunctionComplexity = (functions) => functions.reduce(
+  (highest, functionItem) => Math.max(highest, functionItem.complexity),
+  0
+);
+
 const renderFunctionDetails = (functions) => {
   const details = document.createElement('div');
   details.className = 'function-details';
@@ -488,16 +493,27 @@ const renderSummaryTable = () => {
       const td = document.createElement('td');
       if (column.key === 'functions') {
         const detailsId = `function-details-${index}`;
+        const highestComplexity = getHighestFunctionComplexity(row.functions);
+        const complexityClass = getComplexityClass(highestComplexity);
         const toggle = document.createElement('button');
         toggle.type = 'button';
-        toggle.className = 'function-details-toggle secondary';
+        toggle.className = `function-details-toggle secondary${
+          complexityClass === 'minimum' ? '' : ` ${complexityClass}`
+        }`;
         toggle.textContent = 'View functions';
         toggle.setAttribute('aria-expanded', 'false');
         toggle.setAttribute('aria-controls', detailsId);
+        toggle.setAttribute(
+          'aria-label',
+          `View functions. Highest function complexity: ${highestComplexity}.`
+        );
         toggle.addEventListener('click', () => {
           const expanded = toggle.getAttribute('aria-expanded') === 'true';
           toggle.setAttribute('aria-expanded', String(!expanded));
           toggle.textContent = expanded ? 'View functions' : 'Hide functions';
+          if (!expanded && detailCell.childElementCount === 0) {
+            detailCell.append(renderFunctionDetails(row.functions));
+          }
           detailRow.hidden = expanded;
         });
         td.append(toggle);
@@ -514,7 +530,6 @@ const renderSummaryTable = () => {
     detailRow.hidden = true;
     const detailCell = document.createElement('td');
     detailCell.colSpan = summaryTableState.columns.length;
-    detailCell.append(renderFunctionDetails(row.functions));
     detailRow.append(detailCell);
     tbody.append(detailRow);
   });
