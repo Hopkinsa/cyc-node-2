@@ -11,8 +11,9 @@ export const GET_ALL_FUNCTIONS = `SELECT id, report_id, summary_id, function, li
 export const GET_REPORT_BY_NAME = `SELECT id FROM reports WHERE report = ?`;
 export const GET_REPORT_BY_PROJECT_AND_TIMESTAMP = `SELECT id, project, report, timestamp, fileCount, totalComplexity, averageComplexity FROM reports WHERE project = ? AND timestamp = ?`;
 export const GET_REPORT_FILES = `SELECT id, report_id, filename, fileComplexity, totalFunctions, totalComplexity, averageComplexity FROM files WHERE report_id = ?`;
+export const GET_ALL_STORED_REPORT_FILES = `SELECT id, report_id, filename, fileComplexity, totalFunctions, totalComplexity, averageComplexity FROM files`;
 export const GET_ALL_REPORT_FILES = `SELECT id, report_id, filename, fileComplexity, totalFunctions, totalComplexity, averageComplexity FROM files WHERE report_id = ? AND ${REPORT_VISIBLE_FILES_SQL}`;
-export const GET_ALL_REPORT_FILE_FUNCTIONS = `SELECT id, report_id, summary_id, function, line, functionComplexity FROM functions WHERE report_id = ? AND summary_id = ?`;
+export const GET_REPORT_FUNCTIONS = `SELECT id, report_id, summary_id, function, line, functionComplexity FROM functions WHERE report_id = ?`;
 export const GET_REPORT_HIDDEN_FILE_STATS = `SELECT COUNT(*) AS hiddenFileCount, COALESCE(SUM(fileComplexity), 0) AS hiddenComplexity FROM files WHERE report_id = ? AND NOT ${REPORT_VISIBLE_FILES_SQL}`;
 
 

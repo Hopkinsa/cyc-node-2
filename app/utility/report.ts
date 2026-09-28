@@ -26,24 +26,55 @@ class Report {
       DBRead.getGitLog(),
       DBRead.getReports(),
     ]);
+    const reportConfigsByProject = new Map(
+      REPORTS.map((report) => [
+        'PROJECT' in report ? report.PROJECT : report.FOLDER,
+        report,
+      ])
+    );
+    const reportsByProject = new Map<string, typeof storedReports>();
+    const gitlogCountByProject = new Map<string, number>();
 
-    const projects = await Promise.all(
-      REPORTS.map(async (report, idx) => {
+    for (const storedReport of storedReports) {
+      const projectReports = reportsByProject.get(storedReport.project) ?? [];
+      projectReports.push(storedReport);
+      reportsByProject.set(storedReport.project, projectReports);
+    }
+
+    for (const row of gitlogRows) {
+      for (const label of row.labels) {
+        if (reportConfigsByProject.has(label)) {
+          gitlogCountByProject.set(
+            label,
+            (gitlogCountByProject.get(label) ?? 0) + 1
+          );
+        }
+      }
+    }
+
+    const reportStatsById = await DBRead.getReportFileStatsForReports(
+      storedReports.flatMap((storedReport) => {
+        if (!storedReport.id) {
+          return [];
+        }
+
+        return [{
+          id: storedReport.id,
+          excludedFiles: reportConfigsByProject.get(storedReport.project)
+            ?.EXCLUDE_FILES,
+        }];
+      })
+    );
+
+    const projects = REPORTS.map((report, idx) => {
         const projectKey = 'PROJECT' in report ? report.PROJECT : report.FOLDER;
-        const projectReports = storedReports.filter(
-          (storedReport) => storedReport.project === projectKey
-        );
-        const projectReportsWithCurrentStats = await Promise.all(
-          projectReports.map(async (storedReport) => ({
-            ...storedReport,
-            ...(storedReport.id
-              ? await DBRead.getReportFileStats(
-                  storedReport.id,
-                  report.EXCLUDE_FILES
-                )
-              : {}),
-          }))
-        );
+        const projectReports = reportsByProject.get(projectKey) ?? [];
+        const projectReportsWithCurrentStats = projectReports.map((storedReport) => ({
+          ...storedReport,
+          ...(storedReport.id
+            ? reportStatsById.get(String(storedReport.id))
+            : {}),
+        }));
         const reportsByNewest = projectReportsWithCurrentStats.slice().sort(
           (left, right) => right.timestamp - left.timestamp
         );
@@ -52,7 +83,7 @@ class Report {
           idx,
           name: report.NAME,
           projectKey,
-          gitlogCount: gitlogRows.filter((row) => row.labels.includes(projectKey)).length,
+          gitlogCount: gitlogCountByProject.get(projectKey) ?? 0,
           reportCount: projectReports.length,
           latestReport,
           latestReportStats: latestReport
@@ -66,8 +97,7 @@ class Report {
             .slice()
             .sort((left, right) => left.timestamp - right.timestamp),
         };
-      })
-    );
+      });
 
     res.status(200).json({
       sourcePath: config.PATH,
@@ -85,14 +115,20 @@ class Report {
       .filter((storedReport) => storedReport.project === projectKey)
       .sort((left, right) => right.timestamp - left.timestamp);
 
-    const storedReportsWithHiddenStats = await Promise.all(
-      storedReports.map(async (storedReport) => ({
+    const reportStatsById = await DBRead.getReportFileStatsForReports(
+      storedReports.flatMap((storedReport) => {
+        if (!storedReport.id) {
+          return [];
+        }
+
+        return [{ id: storedReport.id, excludedFiles: report.EXCLUDE_FILES }];
+      })
+    );
+    const storedReportsWithHiddenStats = storedReports.map((storedReport) =>
+      ({
         ...storedReport,
         ...(storedReport.id
-          ? await DBRead.getReportFileStats(
-              storedReport.id,
-              report.EXCLUDE_FILES
-            )
+          ? reportStatsById.get(String(storedReport.id))
           : {
               fileCount: 0,
               totalComplexity: 0,
@@ -100,7 +136,7 @@ class Report {
               hiddenFileCount: 0,
               hiddenComplexity: 0,
             }),
-      }))
+      })
     );
 
     res.status(200).json({

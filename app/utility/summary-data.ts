@@ -187,37 +187,22 @@ class SummaryReport {
       0
     );
     const averageComplexity = fileCount > 0 ? totalComplexity / fileCount : 0;
-    const tmpReportId = await DBUpdate.createReports({
-      ...reportData,
-      fileCount,
-      totalComplexity,
-      averageComplexity,
-    });
+    const files = tmpObj.map((fileItem) => ({
+      ...fileItem,
+      file: path.isAbsolute(fileItem.file)
+        ? path.relative(workspaceRoot, fileItem.file)
+        : path.normalize(fileItem.file),
+    }));
 
-    for (const fileItem of tmpObj) {
-      const fileData: IFiles = {
-        report_id: tmpReportId,
-        filename: path.isAbsolute(fileItem.file)
-          ? path.relative(workspaceRoot, fileItem.file)
-          : path.normalize(fileItem.file),
-        fileComplexity: fileItem.complexity,
-        totalFunctions: fileItem.functionTotal,
-        totalComplexity: fileItem.complexityTotal,
-        averageComplexity: fileItem.complexityAverage,
-      };
-      const fileId = await DBUpdate.createFiles(fileData);
-
-      for (const functionItem of fileItem.functions) {
-        const functiomData: IFunctions = {
-          report_id: tmpReportId,
-          summary_id: fileId,
-          function: functionItem.name,
-          line: functionItem.line,
-          functionComplexity: functionItem.complexity,
-        };
-        await DBUpdate.createFunctions(functiomData);
-      }
-    }
+    DBUpdate.createReportWithData(
+      {
+        ...reportData,
+        fileCount,
+        totalComplexity,
+        averageComplexity,
+      },
+      files
+    );
   };
 
   static getSummary = async (req: Request, res: Response): Promise<void> => {
