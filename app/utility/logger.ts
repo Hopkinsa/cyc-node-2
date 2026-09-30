@@ -1,3 +1,5 @@
+import config from './config.ts';
+
 type CrayonType = {
   default: string;
   black: string;
@@ -38,22 +40,57 @@ const CRAYONS = (...args: string[]): CrayonType => ({
   bgWhite: `\x1b[47m${args.join(' ')}\x1b[0m`,
 });
 
+type LogEntry = string | boolean;
+
+const resolveLogEntries = (entries: LogEntry[]): {
+  args: string[];
+  override: boolean;
+} => {
+  const override = entries.at(-1) === true;
+  const args = entries.filter((entry): entry is string => typeof entry === 'string');
+
+  return { args, override };
+};
+
+const shouldLog = (override: boolean): boolean => config.DEBUGGER || override;
+
 export const log = {
-  title: (...args: string[]): void => {
-    args = [' ', ...args, ' '];
-    console.info(CRAYONS(CRAYONS(...args).blue).bgWhite);
+  title: (...entries: LogEntry[]): void => {
+    const { args, override } = resolveLogEntries(entries);
+    if (!shouldLog(override)) {
+      return;
+    }
+    const formattedArgs = [' ', ...args, ' '];
+    console.info(CRAYONS(CRAYONS(...formattedArgs).blue).bgWhite);
   },
-  info_lv1: (...args: string[]): void => {
+  info_lv1: (...entries: LogEntry[]): void => {
+    const { args, override } = resolveLogEntries(entries);
+    if (!shouldLog(override)) {
+      return;
+    }
     console.info(CRAYONS(...args).yellow, CRAYONS().default);
   },
-  info_lv2: (...args: string[]): void => {
-    args = ['  ', ...args];
-    console.info(CRAYONS(...args).cyan, CRAYONS().default);
+  info_lv2: (...entries: LogEntry[]): void => {
+    const { args, override } = resolveLogEntries(entries);
+    if (!shouldLog(override)) {
+      return;
+    }
+    const formattedArgs = ['  ', ...args];
+    console.info(CRAYONS(...formattedArgs).cyan, CRAYONS().default);
   },
-  info_lv3: (...args: string[]): void => {
-    args = ['    ', ...args];
-    console.info(CRAYONS(...args).magenta, CRAYONS().default);
+  info_lv3: (...entries: LogEntry[]): void => {
+    const { args, override } = resolveLogEntries(entries);
+    if (!shouldLog(override)) {
+      return;
+    }
+    const formattedArgs = ['    ', ...args];
+    console.info(CRAYONS(...formattedArgs).magenta, CRAYONS().default);
   },
-  error: (...args: string[]): void =>
-    console.info(CRAYONS(...args).red, CRAYONS().default),
+  error: (...entries: LogEntry[]): void => {
+    const { args, override } = resolveLogEntries(entries);
+    if (!shouldLog(override)) {
+      return;
+    }
+    console.info(CRAYONS(...args).red, CRAYONS().default);
+  },
 };

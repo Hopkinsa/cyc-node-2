@@ -112,3 +112,13 @@ npm run start
 ```
 
 Once the server is running, open your browser and navigate to `http://localhost:3000/`.
+
+## Desktop application
+
+To open the same dashboard in Electron, run:
+
+```bash
+npm run desktop
+```
+
+The desktop app starts its own local report server on an available private port, so it can run alongside the web application without conflicting with `SERVER_PORT`.

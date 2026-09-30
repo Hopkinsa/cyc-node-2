@@ -39,6 +39,7 @@ The root `PATH` is the absolute path to the target Git repository. CYCNode2 runs
 | Setting | Used for |
 | --- | --- |
 | `SERVER_PORT` | HTTP port for the CYCNode2 web interface. |
+| `DEBUGGER` | Display log messages in the CLI either `true` or `false` |
 | `PATH` | Target Git repository. Used to synchronize Git history and create detached worktrees for reports. |
 | `MODE` | Set to `"nx"` only when using the shorthand `PROJECTS` configuration. Omit it for explicit `REPORTS` configuration unless an individual report is Nx. |
 | `PROJECTS` | Shorthand list that creates one conventional Nx report for each project name. |
@@ -51,13 +52,14 @@ This is the simplest configuration for a conventional Nx workspace where apps ar
 ```json
 {
   "SERVER_PORT": 3000,
+  "DEBUGGER": false,
   "PATH": "/absolute/path/to/the/repository",
   "MODE": "nx",
   "PROJECTS": ["project-a", "project-b"]
 }
 ```
 
-- `SERVER_PORT` and `PATH` have the meanings described in the table above.
+- `SERVER_PORT`, `DEBUGGER` and `PATH` have the meanings described in the table above.
 - `MODE: "nx"` tells CYCNode2 to create one Nx report definition for each value in `PROJECTS`.
 - Each `PROJECTS` value is used as the Nx project name, GitHub issue label, dashboard key, `APP_ROOT` (`apps/<project>`), and `LIB_SCOPE` (`libs/<project>`).
 
@@ -70,6 +72,7 @@ Use `REPORTS` when a project does not follow the standard Nx layout or when conf
 ```json
 {
   "SERVER_PORT": 3000,
+  "DEBUGGER": false,
   "PATH": "/absolute/path/to/the/repository",
   "REPORTS": [
     {
