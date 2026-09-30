@@ -8,13 +8,13 @@ import { app } from './app.ts';
 const PORT = config.SERVER_PORT;
 const server = createServer(app);
 
-log.info_lv1(`Starting CYC-Node`);
+log.info_lv1(`Starting CYC-Node`, true);
 if (PORT !== null) {
   DBService.connectToDatabase()
     .then(() => {
       server.listen(PORT, () => {
         log.info_lv2(`Server port: ${PORT}`);
-        log.info_lv2(`Web page: http://localhost:${PORT}`);
+        log.info_lv2(`Web page: http://localhost:${PORT}`, true);
       });
     })
     .catch((error: Error) => {

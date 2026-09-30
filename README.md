@@ -1,6 +1,6 @@
 # CYCNode2
 
-See the [user guide](docs/usage.md) for setup, configuration, dashboard controls, report generation, metrics, charts, and troubleshooting.
+See the [user guide](docs/usage.md) for setup, configuration, dashboard controls, report generation, filtering, exclusions, metrics, charts, and troubleshooting.
 
 ## To install
 
@@ -17,6 +17,8 @@ The application supports two project modes:
 - single-folder projects
 - Nx monorepo projects
 
+The report browser supports sortable file metrics, numeric range filters, per-project file exclusions, function-level drill-down, and comparisons between stored runs.
+
 ## Configuration
 
 ```json
@@ -32,6 +34,33 @@ The application supports two project modes:
 - `PATH`: Absolute path to the project root that will be analyzed.
 - `MODE`: Using 'nx' or not.
 - `PROJECTS`: Label shown in the UI.
+
+This form creates conventional Nx report definitions for every project in `PROJECTS`. Use explicit `REPORTS` configuration when a project needs custom paths or file exclusions.
+
+## Report Configuration and File Exclusions
+
+Use an explicit `REPORTS` array for single-folder projects, non-standard Nx layouts, or per-project exclusions:
+
+```json
+{
+  "SERVER_PORT": 3000,
+  "PATH": "/to/codebase",
+  "REPORTS": [
+    {
+      "NAME": "Web application",
+      "PATH": "/to/codebase",
+      "FOLDER": "web-app",
+      "EXCLUDE_FILES": ["apps/web-app/src/vendor.js", "%/third-party/%"]
+    }
+  ]
+}
+```
+
+`EXCLUDE_FILES` accepts exact file paths and `%` wildcard patterns. Excluded files do not contribute to visible dashboard statistics, project history, summaries, or comparisons, but their stored data is retained. You can also update exclusions from the project report page; saving writes them to `config.json` and refreshes historical results without regenerating reports.
+
+Built-in exclusions always hide paths matching `%eslint-configs/%`, `%mock%`, `%test-setup%`, `%.json`, and `libs/shared/%`.
+
+On a run summary, numeric minimum and maximum filters limit the displayed files only. They do not change report metrics or stored data. The **View functions** button shows per-function details and is coloured by the highest individual function complexity when that score exceeds 5: yellow for 6-10, orange for 11-20, and red for 21+.
 
 ## How Nx Mode Works
 
@@ -83,3 +112,13 @@ npm run start
 ```
 
 Once the server is running, open your browser and navigate to `http://localhost:3000/`.
+
+## Desktop application
+
+To open the same dashboard in Electron, run:
+
+```bash
+npm run desktop
+```
+
+The desktop app starts its own local report server on an available private port, so it can run alongside the web application without conflicting with `SERVER_PORT`.

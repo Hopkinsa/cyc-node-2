@@ -1,5 +1,6 @@
 {
     "SERVER_PORT": 3000,
+    "DEBUGGER": { true | false },
     "PATH": "/absolute/path/to/project",
     "MODE": "nx",
     "PROJECTS": [ "project-name" ],

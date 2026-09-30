@@ -9,6 +9,7 @@ import {
 
 type RawConfig = {
   SERVER_PORT?: number | null;
+  DEBUGGER?: boolean;
   PATH?: string;
   MODE?: 'nx' | '';
   PROJECTS?: string[];
@@ -18,6 +19,7 @@ type RawConfig = {
 const CONFIG_PATH = path.resolve('./config.json');
 const DEFAULT_CONFIG = {
   SERVER_PORT: 3000,
+  DEBUGGER: false,
   PATH: '',
   MODE: '',
   PROJECTS: [],
@@ -25,6 +27,7 @@ const DEFAULT_CONFIG = {
 
 let config: IAppConfig = {
   SERVER_PORT: null,
+  DEBUGGER: false,
   PATH: '',
   MODE: '',
   PROJECTS: [],
@@ -127,6 +130,7 @@ if (!existsSync(CONFIG_PATH)) {
 
   config = {
     SERVER_PORT: parsedConfig.SERVER_PORT ?? null,
+    DEBUGGER: parsedConfig.DEBUGGER === true,
     PATH: normalizedSourcePath,
     MODE: parsedConfig.MODE ?? '',
     PROJECTS: Array.isArray(parsedConfig.PROJECTS) ? parsedConfig.PROJECTS : [],
