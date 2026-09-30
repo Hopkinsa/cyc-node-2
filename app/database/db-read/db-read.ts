@@ -15,17 +15,26 @@ import {
   GET_ALL_FILES,
   GET_ALL_FUNCTIONS,
   GET_ALL_GITLOG,
-  GET_ALL_REPORT_FILE_FUNCTIONS,
   GET_ALL_REPORTS,
   GET_EXTRACTION_STATE,
   GET_GITLOG_BY_PROJECT,
   GET_REPORT_BY_NAME,
   GET_REPORT_BY_PROJECT_AND_TIMESTAMP,
   GET_REPORT_FILES,
+  GET_ALL_STORED_REPORT_FILES,
+  GET_REPORT_FUNCTIONS,
 } from './sql-read.ts';
 import { shouldIncludeReportFile } from '../report-file-filter.ts';
 
 const DEBUG = 'db-read | ';
+
+type ReportFileStats = {
+  fileCount: number;
+  totalComplexity: number;
+  averageComplexity: number;
+  hiddenFileCount: number;
+  hiddenComplexity: number;
+};
 
 class DBRead {
   static parseGitLog = (item: {
@@ -140,13 +149,7 @@ class DBRead {
   static getReportFileStats = async (
     reportId: number | bigint,
     excludedFiles: string[] = []
-  ): Promise<{
-    fileCount: number;
-    totalComplexity: number;
-    averageComplexity: number;
-    hiddenFileCount: number;
-    hiddenComplexity: number;
-  }> => {
+  ): Promise<ReportFileStats> => {
     const files = DBService.db.prepare(GET_REPORT_FILES).all(reportId) as IFiles[];
     const visibleFiles = files.filter((file) =>
       shouldIncludeReportFile(file.filename, excludedFiles)
@@ -170,6 +173,56 @@ class DBRead {
         0
       ),
     };
+  };
+
+  static getReportFileStatsForReports = async (
+    reports: Array<{ id: number | bigint; excludedFiles?: string[] }>
+  ): Promise<Map<string, ReportFileStats>> => {
+    const statsByReportId = new Map<string, ReportFileStats>();
+    const exclusionsByReportId = new Map<string, string[]>();
+
+    for (const report of reports) {
+      const reportId = String(report.id);
+      exclusionsByReportId.set(reportId, report.excludedFiles ?? []);
+      statsByReportId.set(reportId, {
+        fileCount: 0,
+        totalComplexity: 0,
+        averageComplexity: 0,
+        hiddenFileCount: 0,
+        hiddenComplexity: 0,
+      });
+    }
+
+    if (statsByReportId.size === 0) {
+      return statsByReportId;
+    }
+
+    const files = DBService.db
+      .prepare(GET_ALL_STORED_REPORT_FILES)
+      .all() as IFiles[];
+
+    for (const file of files) {
+      const reportId = String(file.report_id);
+      const stats = statsByReportId.get(reportId);
+      if (!stats) {
+        continue;
+      }
+
+      if (shouldIncludeReportFile(file.filename, exclusionsByReportId.get(reportId))) {
+        stats.fileCount += 1;
+        stats.totalComplexity += file.fileComplexity;
+      } else {
+        stats.hiddenFileCount += 1;
+        stats.hiddenComplexity += file.fileComplexity;
+      }
+    }
+
+    for (const stats of statsByReportId.values()) {
+      stats.averageComplexity =
+        stats.fileCount > 0 ? stats.totalComplexity / stats.fileCount : 0;
+    }
+
+    return statsByReportId;
   };
 
   static getFiles = async (): Promise<void> => {
@@ -284,36 +337,30 @@ class DBRead {
       .all(reportId) as IFiles[]).filter((file) =>
       shouldIncludeReportFile(file.filename, excludedFiles)
     );
-    const data: dataObject[] = [];
+    const functionsByFileId = new Map<string, functionObject[]>();
+    const functionData = DBService.db
+      .prepare(GET_REPORT_FUNCTIONS)
+      .all(reportId) as IFunctions[];
 
-    fileData.forEach((item) => {
-      const tmpData: dataObject = {
+    for (const itemFunction of functionData) {
+      const fileId = String(itemFunction.summary_id);
+      const functions = functionsByFileId.get(fileId) ?? [];
+      functions.push({
+        name: itemFunction.function,
+        line: itemFunction.line,
+        complexity: itemFunction.functionComplexity,
+      });
+      functionsByFileId.set(fileId, functions);
+    }
+
+    return fileData.map((item): dataObject => ({
         file: item.filename,
         complexity: item.fileComplexity,
-        functions: [],
+        functions: functionsByFileId.get(String(item.id)) ?? [],
         functionTotal: item.totalFunctions,
         complexityTotal: item.totalComplexity,
         complexityAverage: item.averageComplexity,
-      };
-
-      const functionData = DBService.db
-        .prepare(GET_ALL_REPORT_FILE_FUNCTIONS)
-        .all(reportId, item.id) as IFunctions[];
-
-      functionData.forEach((itemFunction) => {
-        const tmpFunction: functionObject = {
-          name: itemFunction.function,
-          line: itemFunction.line,
-          complexity: itemFunction.functionComplexity,
-        };
-
-        tmpData.functions.push(tmpFunction);
-      });
-
-      data.push(tmpData);
-    });
-
-    return data;
+      }));
   };
 }
 
