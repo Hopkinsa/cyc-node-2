@@ -20,6 +20,7 @@ export type IReportConfig = IReportConfigBase | INxReportConfig;
 
 export interface IAppConfig {
   SERVER_PORT: number | null;
+  DEBUGGER: boolean;
   PATH: string;
   MODE: ReportMode;
   PROJECTS: string[];
