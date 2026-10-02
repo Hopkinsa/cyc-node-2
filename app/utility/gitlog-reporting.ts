@@ -131,6 +131,58 @@ class GitlogReporting {
     };
   };
 
+  static removeTemporaryReport = async (
+    projectName: string
+  ): Promise<boolean> => {
+    const temporaryReports = (await DBRead.getReports()).filter(
+      (report) => report.project === projectName && report.isTemporary
+    );
+
+    for (const report of temporaryReports) {
+      if (typeof report.id !== 'undefined') {
+        await DBUpdate.deleteReportCascade(report.id);
+      }
+    }
+
+    return temporaryReports.length > 0;
+  };
+
+  static generateTemporaryReport = async (
+    report: IReportConfig
+  ): Promise<void> => {
+    const project = GitlogReporting.getProjectKey(report);
+    await GitlogReporting.removeTemporaryReport(project);
+
+    const outputPath = await ComplexityReport.generate(report);
+    if (!outputPath) {
+      throw new Error('Temporary report generation produced no output.');
+    }
+
+    try {
+      let timestamp = Math.floor(Date.now() / 1000);
+      while (await DBRead.reportExistsByProjectAndTimestamp(project, timestamp) !== -1) {
+        timestamp += 1;
+      }
+
+      await SummaryReport.createDataFromOutput(
+        outputPath,
+        report.PATH,
+        {
+          project,
+          report: `Temporary report - ${GitlogReporting.formatTimestamp(timestamp)}`,
+          isTemporary: true,
+          timestamp,
+          fileCount: 0,
+          totalComplexity: 0,
+          averageComplexity: 0,
+        },
+        report.EXCLUDE_FILES
+      );
+    } finally {
+      await ComplexityReport.deleteOutput(outputPath).catch(() => undefined);
+    }
+  };
+
   static pruneStaleReports = async (
     gitlogRows: IGitLog[],
     reports: IReportConfig[]
@@ -153,6 +205,10 @@ class GitlogReporting {
 
     for (const reportRow of existingReports) {
       if (!reportProjects.has(reportRow.project)) {
+        continue;
+      }
+
+      if (reportRow.isTemporary) {
         continue;
       }
 

@@ -11,16 +11,19 @@ class DBService {
   static db: DBType;
 
   static connectToDatabase = async (): Promise<void> => {
-    if (!fs.existsSync(pathToDB)) {
+    const databaseExists = fs.existsSync(pathToDB);
+    if (!databaseExists) {
       if (!fs.existsSync(DATA_PATH)) {
         log.info_lv2(`${DEBUG}Database folder does not exist.`);
         fs.mkdirSync(DATA_PATH);
         log.info_lv2(`${DEBUG}Database folder created at '${DATA_PATH}'.`);
       }
-      await createDatabase(pathToDB);
+    }
+
+    await createDatabase(pathToDB);
+    if (!databaseExists) {
       log.info_lv2(`${DEBUG}The database at '${pathToDB}' was created.`);
     }
-    await createDatabase(pathToDB);
     this.db = new Database(pathToDB, { fileMustExist: true });
   };
 }

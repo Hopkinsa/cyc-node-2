@@ -7,10 +7,15 @@ const elements = {
   projectView: document.querySelector('#project-view'),
   summaryView: document.querySelector('#summary-view'),
   folders: document.querySelector('#folders'),
+  storedReportsPaginationTop: document.querySelector('#stored-reports-pagination-top'),
+  storedReportsPaginationBottom: document.querySelector('#stored-reports-pagination-bottom'),
   generateProject: document.querySelector('#generate-project'),
   compareForm: document.querySelector('#compare-form'),
   compareA: document.querySelector('#compare-a'),
   compareB: document.querySelector('#compare-b'),
+  generateTemporaryReport: document.querySelector('#generate-temporary-report'),
+  temporaryReportActions: document.querySelector('#temporary-report-actions'),
+  temporaryReportStats: document.querySelector('#temporary-report-stats'),
   compareView: document.querySelector('#compare-view'),
   comparePageTitle: document.querySelector('#compare-page-title'),
   comparePageTable: document.querySelector('#compare-page-table'),
@@ -20,6 +25,11 @@ const elements = {
   summaryBack: document.querySelector('#summary-back'),
   refresh: document.querySelector('#refresh'),
   projectTrendChart: document.querySelector('#project-trend-chart'),
+  trendRange: document.querySelector('#trend-range'),
+  trendRangeStart: document.querySelector('#trend-range-start'),
+  trendRangeEnd: document.querySelector('#trend-range-end'),
+  trendRangeStartLabel: document.querySelector('#trend-range-start-label'),
+  trendRangeEndLabel: document.querySelector('#trend-range-end-label'),
   chartToggles: document.querySelectorAll('.chart-toggle'),
   exclusionList: document.querySelector('#exclusion-list'),
   addExclusion: document.querySelector('#add-exclusion'),
@@ -33,7 +43,12 @@ const compareAParam = new URLSearchParams(window.location.search).get('compareA'
 const compareBParam = new URLSearchParams(window.location.search).get('compareB');
 let currentProjectKey = null;
 let projectHistory = [];
+let trendRangeStart = 0;
+let trendRangeEnd = 0;
 let exclusionPatterns = [];
+let savedReports = [];
+let storedReportsPage = 0;
+let storedReportsPageSize = '5';
 const activeTrendMetrics = new Set(['fileCount', 'averageComplexity']); // 'totalComplexity',
 const summaryTableState = {
   rows: [],
@@ -51,10 +66,34 @@ const summaryTableState = {
 const renderProjectTrend = () => {
   renderReportTrend(
     elements.projectTrendChart,
-    projectHistory,
+    projectHistory.slice(trendRangeStart, trendRangeEnd + 1),
     Array.from(activeTrendMetrics)
   );
 };
+
+const updateTrendRange = () => {
+  const maximum = Math.max(projectHistory.length - 1, 0);
+  elements.trendRange.hidden = projectHistory.length < 2;
+  elements.trendRangeStart.min = '0';
+  elements.trendRangeStart.max = String(trendRangeEnd);
+  elements.trendRangeStart.value = String(trendRangeStart);
+  elements.trendRangeEnd.min = String(trendRangeStart);
+  elements.trendRangeEnd.max = String(maximum);
+  elements.trendRangeEnd.value = String(trendRangeEnd);
+  elements.trendRangeStartLabel.textContent = projectHistory[trendRangeStart]?.report ?? '';
+  elements.trendRangeEndLabel.textContent = projectHistory[trendRangeEnd]?.report ?? '';
+  renderProjectTrend();
+};
+
+elements.trendRangeStart.addEventListener('input', () => {
+  trendRangeStart = Math.min(Number(elements.trendRangeStart.value), trendRangeEnd);
+  updateTrendRange();
+});
+
+elements.trendRangeEnd.addEventListener('input', () => {
+  trendRangeEnd = Math.max(Number(elements.trendRangeEnd.value), trendRangeStart);
+  updateTrendRange();
+});
 
 const getExclusionPatterns = () => Array.from(
   elements.exclusionList.querySelectorAll('input')
@@ -151,12 +190,170 @@ const setBusy = (busy) => {
   });
 };
 
-const formatHiddenStats = (storedReport) => {
-  if (!storedReport.hiddenFileCount) {
-    return '';
+const formatPath = (path) => String(path).replaceAll('/', ' / ');
+
+const createRunStats = (storedReport) => {
+  const functionCount = Number(storedReport.functionCount) || 0;
+  const fileCount = Number(storedReport.fileCount) || 0;
+  const totalComplexity = Number(storedReport.totalComplexity) || 0;
+  const complexityPerFile = Number(storedReport.averageComplexity) || 0;
+  const functionsPerFile = fileCount > 0 ? functionCount / fileCount : 0;
+  const complexityPerFunction = Number(
+    storedReport.averageComplexityPerFunction
+  ) || 0;
+
+  const stats = document.createElement('div');
+  stats.className = 'run-stats';
+
+  const primary = document.createElement('div');
+  primary.textContent = `${fileCount} files | ${functionCount} functions | ${totalComplexity} total complexity`;
+
+  const averages = document.createElement('div');
+  averages.textContent = `${complexityPerFile.toFixed(2)} complexity/file | ${functionsPerFile.toFixed(2)} functions/file | ${complexityPerFunction.toFixed(2)} average complexity/functions/file`;
+
+  stats.append(primary, averages);
+
+  if (storedReport.hiddenFileCount) {
+    const hidden = document.createElement('div');
+    hidden.textContent = `${storedReport.hiddenFileCount} hidden files filtered out (${storedReport.hiddenComplexity} complexity)`;
+    stats.append(hidden);
   }
 
-  return ` | ${storedReport.hiddenFileCount} hidden files filtered out (${storedReport.hiddenComplexity} complexity)`;
+  return stats;
+};
+
+const renderStoredReportsPagination = (container) => {
+  container.textContent = '';
+  container.hidden = savedReports.length <= 5;
+
+  if (container.hidden) {
+    return;
+  }
+
+  const pageSize = storedReportsPageSize === 'all'
+    ? Math.max(savedReports.length, 1)
+    : Number(storedReportsPageSize);
+  const pageCount = Math.ceil(savedReports.length / pageSize);
+  const pageInfo = document.createElement('span');
+  pageInfo.className = 'stored-reports-page-info';
+  pageInfo.textContent = `Page ${storedReportsPage + 1} of ${pageCount}`;
+
+  const sizeLabel = document.createElement('label');
+  sizeLabel.className = 'stored-reports-page-size';
+  sizeLabel.textContent = 'Runs per page';
+  const sizeSelectWrapper = document.createElement('span');
+  sizeSelectWrapper.className = 'stored-reports-page-select';
+  const sizeSelect = document.createElement('select');
+  sizeSelect.setAttribute('aria-label', 'Runs per page');
+  ['5', '10', '20', 'all'].forEach((value) => {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = value === 'all' ? 'All' : value;
+    option.selected = value === storedReportsPageSize;
+    sizeSelect.append(option);
+  });
+  sizeSelect.addEventListener('change', () => {
+    storedReportsPageSize = sizeSelect.value;
+    storedReportsPage = 0;
+    renderStoredReports();
+  });
+  sizeSelectWrapper.append(sizeSelect);
+  sizeLabel.append(sizeSelectWrapper);
+
+  const previous = document.createElement('button');
+  previous.type = 'button';
+  previous.className = 'secondary stored-reports-page-button';
+  previous.textContent = 'Previous';
+  previous.disabled = storedReportsPage === 0;
+  previous.addEventListener('click', () => {
+    storedReportsPage -= 1;
+    renderStoredReports();
+  });
+
+  const next = document.createElement('button');
+  next.type = 'button';
+  next.className = 'secondary stored-reports-page-button';
+  next.textContent = 'Next';
+  next.disabled = storedReportsPage >= pageCount - 1;
+  next.addEventListener('click', () => {
+    storedReportsPage += 1;
+    renderStoredReports();
+  });
+
+  container.append(sizeLabel, pageInfo, previous, next);
+};
+
+const renderStoredReports = () => {
+  const pageSize = storedReportsPageSize === 'all'
+    ? Math.max(savedReports.length, 1)
+    : Number(storedReportsPageSize);
+  const pageCount = Math.max(Math.ceil(savedReports.length / pageSize), 1);
+  storedReportsPage = Math.min(storedReportsPage, pageCount - 1);
+  const start = storedReportsPage * pageSize;
+  const currentPage = savedReports.slice(start, start + pageSize);
+
+  elements.folders.textContent = '';
+  if (savedReports.length === 0) {
+    const item = document.createElement('li');
+    item.textContent = 'No stored reports available yet';
+    elements.folders.append(item);
+  }
+
+  currentPage.forEach((storedReport) => {
+    const item = document.createElement('li');
+    item.className = 'stored-run';
+    const link = document.createElement('a');
+    link.className = 'stored-run-timestamp';
+    link.href = `/reports/${reportIdx}/${encodeURIComponent(String(storedReport.timestamp))}`;
+    link.textContent = `${storedReport.report}`;
+    item.append(link, createRunStats(storedReport));
+    elements.folders.append(item);
+  });
+
+  renderStoredReportsPagination(elements.storedReportsPaginationTop);
+  renderStoredReportsPagination(elements.storedReportsPaginationBottom);
+};
+
+const renderTemporaryReport = (temporaryReport) => {
+  elements.temporaryReportStats.textContent = '';
+  elements.temporaryReportActions.querySelectorAll('.temporary-report-action').forEach(
+    (button) => button.remove()
+  );
+
+  if (!temporaryReport) {
+    const empty = document.createElement('p');
+    empty.className = 'empty-temporary-report';
+    empty.textContent = 'No temporary report has been generated.';
+    elements.temporaryReportStats.append(empty);
+    return;
+  }
+
+  const timestamp = document.createElement('div');
+  timestamp.className = 'temporary-report-timestamp';
+  timestamp.textContent = temporaryReport.report;
+  elements.temporaryReportStats.append(timestamp, createRunStats(temporaryReport));
+
+  const viewButton = document.createElement('button');
+  viewButton.type = 'button';
+  viewButton.className = 'secondary temporary-report-action';
+  viewButton.textContent = 'View';
+  viewButton.addEventListener('click', () => {
+    window.location.assign(
+      `/reports/${reportIdx}/${encodeURIComponent(String(temporaryReport.timestamp))}`
+    );
+  });
+
+  const removeButton = document.createElement('button');
+  removeButton.type = 'button';
+  removeButton.className = 'secondary temporary-report-action';
+  removeButton.textContent = 'Remove';
+  removeButton.addEventListener('click', () => runAction(
+    `/api/reports/${reportIdx}/temporary`,
+    'DELETE',
+    'Temporary report removed.'
+  ));
+
+  elements.temporaryReportActions.append(viewButton, removeButton);
 };
 
 const formatTableValue = (columnKey, value, comparisonRow = null) => {
@@ -176,6 +373,10 @@ const formatTableValue = (columnKey, value, comparisonRow = null) => {
       const className = metricValue < 6 ? 'minimum' : metricValue < 11 ? 'minor' : metricValue < 21 ? 'medium' : 'high';
 
       return `<span class="complexityScore ${className}">${formattedValue}</span>`;
+    }
+
+    if (metricKey === 'file') {
+      return formatPath(metricValue);
     }
 
     return String(metricValue);
@@ -207,11 +408,7 @@ const formatTableValue = (columnKey, value, comparisonRow = null) => {
     return `${plusMinus}${val}`;
   }
 
-  if (columnKey === 'complexityAverage') {
-    return formatMetric(columnKey, value);
-  }
-
-  return String(value);
+  return formatMetric(columnKey, value);
 };
 
 const cellClass = (status) => {
@@ -591,27 +788,14 @@ const loadProjectView = async () => {
   renderExclusionList();
   showProjectView();
   projectHistory = data.storedReports.slice().reverse();
-  renderProjectTrend();
-  elements.folders.textContent = '';
-
-  if (data.storedReports.length === 0) {
-    const item = document.createElement('li');
-    item.textContent = 'No stored reports available yet';
-    elements.folders.append(item);
-  }
-
-  data.storedReports.forEach((storedReport) => {
-    const item = document.createElement('li');
-    const link = document.createElement('a');
-    link.href = `/reports/${data.idx}/${encodeURIComponent(String(storedReport.timestamp))}`;
-    link.textContent = `${storedReport.report}`;
-    const stats = document.createElement('span');
-    stats.className = 'run-stats';
-    stats.textContent = `${storedReport.fileCount} files | ${storedReport.totalComplexity} total complexity | ${Number(storedReport.averageComplexity).toFixed(2)} average/file${formatHiddenStats(storedReport)}`;
-    item.append(link);
-    item.append(stats);
-    elements.folders.append(item);
-  });
+  trendRangeStart = 0;
+  trendRangeEnd = Math.max(projectHistory.length - 1, 0);
+  updateTrendRange();
+  const temporaryReport = data.storedReports.find((storedReport) => storedReport.isTemporary);
+  savedReports = data.storedReports.filter((storedReport) => !storedReport.isTemporary);
+  storedReportsPage = 0;
+  renderTemporaryReport(temporaryReport);
+  renderStoredReports();
 
   elements.compareA.innerHTML = '';
   elements.compareB.innerHTML = '';
@@ -631,6 +815,12 @@ const loadProjectView = async () => {
     `/reports/${data.idx}`,
     'POST',
     (result) => `${result.reportsGenerated} reports generated from ${result.gitlogRows} gitlog rows.`
+  );
+
+  elements.generateTemporaryReport.onclick = () => runAction(
+    `/api/reports/${reportIdx}/temporary`,
+    'POST',
+    'Temporary report generated from current local code.'
   );
 
   elements.addExclusion.onclick = () => {
@@ -724,7 +914,11 @@ const loadSummaryView = async () => {
   }
 
   elements.title.textContent = data.report.NAME;
-  elements.subtitle.textContent = `Summary for ${data.targetName} | ${data.storedReport.fileCount} files | ${data.storedReport.totalComplexity} total complexity | ${Number(data.storedReport.averageComplexity).toFixed(2)} average/file${formatHiddenStats(data.storedReport)}`;
+  elements.subtitle.textContent = '';
+  const timestamp = document.createElement('div');
+  timestamp.className = 'summary-timestamp';
+  timestamp.textContent = data.targetName;
+  elements.subtitle.append(timestamp, createRunStats(data.storedReport));
   showSummaryView();
   elements.summaryTitle.textContent = data.targetName;
   elements.summaryBack.href = `/reports/${reportIdx}`;

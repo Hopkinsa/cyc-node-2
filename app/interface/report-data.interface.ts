@@ -8,10 +8,13 @@ export interface IReports {
   id?: number | bigint;
   project: string;
   report: string;
+  isTemporary?: boolean;
   timestamp: number;
   fileCount: number;
+  functionCount?: number;
   totalComplexity: number;
   averageComplexity: number;
+  averageComplexityPerFunction?: number;
   hiddenFileCount?: number;
   hiddenComplexity?: number;
 }

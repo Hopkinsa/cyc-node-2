@@ -16,6 +16,10 @@ REPORT_ROUTES.get('/api/dashboard', Report.getDashboardData);
 
 REPORT_ROUTES.put('/api/reports/:idx/exclusions', Report.updateReportExclusions);
 
+REPORT_ROUTES.post('/api/reports/:idx/temporary', Report.generateTemporaryReport);
+
+REPORT_ROUTES.delete('/api/reports/:idx/temporary', Report.removeTemporaryReport);
+
 REPORT_ROUTES.get('/api/reports/:idx/:tgt', Summary.getSummaryData);
 
 REPORT_ROUTES.get('/api/reports/:idx', Report.getReportsData);
