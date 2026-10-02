@@ -17,6 +17,13 @@ class Report {
     res.sendFile(path.join(STATIC_PATH, 'reports-browser.html'));
   };
 
+  static getComplexityAnalysis = async (
+    _req: Request,
+    res: Response
+  ): Promise<void> => {
+    res.sendFile(path.join(STATIC_PATH, 'reports-analysis.html'));
+  };
+
   static getHelp = async (_req: Request, res: Response): Promise<void> => {
     res.sendFile(path.join(STATIC_PATH, 'reports-help.html'));
   };
@@ -149,6 +156,50 @@ class Report {
       report,
       projectKey,
       storedReports: storedReportsWithHiddenStats,
+    });
+  };
+
+  static getComplexityTrends = async (
+    req: Request,
+    res: Response
+  ): Promise<void> => {
+    const idx = Number.parseInt(req.params['idx'] as string, 10);
+    const report = REPORTS[idx] as IReportConfig | undefined;
+    if (!report) {
+      res.status(400).json({ error: 'Invalid report index.' });
+      return;
+    }
+
+    const projectKey = 'PROJECT' in report ? report.PROJECT : report.FOLDER;
+    const storedReports = (await DBRead.getReports())
+      .filter((storedReport) => storedReport.project === projectKey)
+      .sort((left, right) => left.timestamp - right.timestamp);
+    const visibleFilesByReportId = await DBRead.getVisibleFilesForReports(
+      storedReports.flatMap((storedReport) => (
+        storedReport.id
+          ? [{ id: storedReport.id, excludedFiles: report.EXCLUDE_FILES }]
+          : []
+      ))
+    );
+
+    res.status(200).json({
+      projectKey,
+      history: storedReports.map((storedReport) => ({
+        timestamp: storedReport.timestamp,
+        report: storedReport.report,
+        isTemporary: storedReport.isTemporary ?? false,
+        files: storedReport.id
+          ? (visibleFilesByReportId.get(String(storedReport.id)) ?? []).map(
+              (file) => ({
+                filename: file.filename,
+                fileComplexity: file.fileComplexity,
+                totalFunctions: file.totalFunctions,
+                totalComplexity: file.totalComplexity,
+                averageComplexity: file.averageComplexity,
+              })
+            )
+          : [],
+      })),
     });
   };
 

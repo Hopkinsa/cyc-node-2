@@ -4,6 +4,7 @@ const elements = {
   title: document.querySelector('#title'),
   subtitle: document.querySelector('#subtitle'),
   message: document.querySelector('#message'),
+  analysisLink: document.querySelector('#analysis-link'),
   projectView: document.querySelector('#project-view'),
   summaryView: document.querySelector('#summary-view'),
   folders: document.querySelector('#folders'),
@@ -783,6 +784,7 @@ const loadProjectView = async () => {
 
   elements.title.textContent = data.report.NAME;
   elements.subtitle.textContent = `Stored report runs for ${data.projectKey}`;
+  elements.analysisLink.href = `/reports/${data.idx}/analysis`;
   currentProjectKey = data.projectKey;
   exclusionPatterns = data.report.EXCLUDE_FILES || [];
   renderExclusionList();

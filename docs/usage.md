@@ -172,6 +172,7 @@ Each dashboard project card shows an average-complexity trend line across all av
 The project page contains:
 
 - **Project history**: a responsive line chart across all stored runs. Use **Files**, **Total complexity**, and **Average complexity** to toggle individual lines. The chart key and vertical scale update to match the selected metrics.
+- **Complexity analysis**: open the dedicated analysis screen from the project page to analyse the whole application or selected files. Configure the start and end dates to limit the period, then toggle total complexity, average complexity per function, and high-complexity file counts. The hotspot table shows each file's latest and peak complexity, change over the selected period, and reports containing the file; it supports file-name filtering and sortable columns. The file filter applies 350 milliseconds after typing stops.
 - **Available runs**: each run lists its date, included-file count, total file complexity, and average complexity per file. Select a run to view its file-level results.
 - **Compare stored runs**: choose two runs and compare their file metrics. New, deleted, and changed files are included in the comparison.
 - **Third-party files**: add, amend, or remove per-project exact-path or `%` wildcard exclusion patterns. Save changes to persist them in `config.json` and refresh every stored run's visible file list and metrics immediately; regeneration is not required.

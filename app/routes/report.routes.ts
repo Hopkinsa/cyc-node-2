@@ -14,6 +14,8 @@ REPORT_ROUTES.get('/help', Report.getHelp);
 
 REPORT_ROUTES.get('/api/dashboard', Report.getDashboardData);
 
+REPORT_ROUTES.get('/api/reports/:idx/trends', Report.getComplexityTrends);
+
 REPORT_ROUTES.put('/api/reports/:idx/exclusions', Report.updateReportExclusions);
 
 REPORT_ROUTES.post('/api/reports/:idx/temporary', Report.generateTemporaryReport);
@@ -29,6 +31,8 @@ REPORT_ROUTES.post('/api/reports/compare', ComparisonReport.getComparisonReport)
 REPORT_ROUTES.post('/reports/sync-gitlog', Report.syncGitLog);
 
 REPORT_ROUTES.post('/reports', Report.generateAllReports);
+
+REPORT_ROUTES.get('/reports/:idx/analysis', Report.getComplexityAnalysis);
 
 REPORT_ROUTES.get('/reports/:idx/:tgt', Summary.getSummary);
 

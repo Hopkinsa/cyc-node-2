@@ -365,6 +365,48 @@ button:disabled { opacity: 0.7; cursor: progress; }
 .chart-empty { color: var(--muted); margin: 14px 0 0; }
 
 .project-trend-panel { grid-column: 1 / -1; }
+.scoped-trend-panel { grid-column: 1 / -1; }
+.scope-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.6fr);
+  gap: 16px;
+  align-items: start;
+}
+.scope-files-control,
+.scope-date-controls,
+.scope-date-controls label {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+}
+.scope-files-control small { font-size: 0.72rem; }
+.scope-files-control select,
+.scope-date-controls input,
+.table-toolbar input[type='search'] {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--text);
+  font: inherit;
+}
+.scope-files-control select { padding: 8px 10px; }
+.scope-date-controls input { padding: 10px 12px; }
+.scope-date-controls button { justify-self: start; padding: 10px 12px; }
+.scope-summary { margin: 16px 0 8px; color: var(--muted); }
+.scoped-trend-panel .chart-toggles { margin: 10px 0 0; }
+.scoped-chart-toggle {
+  padding: 8px 10px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--line);
+}
+.scoped-chart-toggle[aria-pressed='true'] {
+  color: #fff6f0;
+  background: var(--accent-dark);
+}
+.hotspot-table-shell { margin-top: 20px; }
+.table-toolbar input[type='search'] { width: min(260px, 100%); padding: 8px 10px; }
 .stored-reports-panel { grid-column: 1; }
 .report-side-panels {
   grid-column: 2;
@@ -445,6 +487,7 @@ button:disabled { opacity: 0.7; cursor: progress; }
   .layout { grid-template-columns: minmax(0, 1fr); }
   .stored-reports-panel,
   .report-side-panels { grid-column: 1; }
+  .scope-controls { grid-template-columns: minmax(0, 1fr); }
 }
 
 .exclusion-panel { grid-column: 1 / -1; }

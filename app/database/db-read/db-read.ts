@@ -225,6 +225,40 @@ class DBRead {
     return statsByReportId;
   };
 
+  static getVisibleFilesForReports = async (
+    reports: Array<{ id: number | bigint; excludedFiles?: string[] }>
+  ): Promise<Map<string, IFiles[]>> => {
+    const filesByReportId = new Map<string, IFiles[]>();
+    const exclusionsByReportId = new Map<string, string[]>();
+
+    for (const report of reports) {
+      const reportId = String(report.id);
+      exclusionsByReportId.set(reportId, report.excludedFiles ?? []);
+      filesByReportId.set(reportId, []);
+    }
+
+    if (filesByReportId.size === 0) {
+      return filesByReportId;
+    }
+
+    const files = DBService.db
+      .prepare(GET_ALL_STORED_REPORT_FILES)
+      .all() as IFiles[];
+
+    for (const file of files) {
+      const reportId = String(file.report_id);
+      const reportFiles = filesByReportId.get(reportId);
+      if (
+        reportFiles &&
+        shouldIncludeReportFile(file.filename, exclusionsByReportId.get(reportId))
+      ) {
+        reportFiles.push(file);
+      }
+    }
+
+    return filesByReportId;
+  };
+
   static getFiles = async (): Promise<void> => {
     log.info_lv2(`${DEBUG}getFiles`);
 
