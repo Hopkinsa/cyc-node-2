@@ -6,6 +6,7 @@ import {
   IGitLog,
   IReports,
 } from '../../interface/report-data.interface.ts';
+import { dataObject } from '../../interface/summary.interface.ts';
 import {
   UPSERT_GITLOG_DATA,
   CREATE_FILE_DATA,
@@ -97,6 +98,52 @@ class DBUpdate {
       const priKey = result.lastInsertRowid;
 
       return priKey;
+  };
+
+  static createReportWithData = (
+    report: IReports,
+    files: dataObject[]
+  ): void => {
+    log.info_lv2(`${DEBUG}createReportWithData`);
+
+    const insertReport = DBService.db.prepare(CREATE_REPORT_DATA);
+    const insertFile = DBService.db.prepare(CREATE_FILE_DATA);
+    const insertFunction = DBService.db.prepare(CREATE_FUNCTION_DATA);
+    const transaction = DBService.db.transaction(
+      (reportData: IReports, fileData: dataObject[]) => {
+        const reportId = insertReport.run(
+          reportData.project,
+          reportData.report,
+          reportData.timestamp,
+          reportData.fileCount,
+          reportData.totalComplexity,
+          reportData.averageComplexity
+        ).lastInsertRowid;
+
+        for (const file of fileData) {
+          const fileId = insertFile.run(
+            reportId,
+            file.file,
+            file.complexity,
+            file.functionTotal,
+            file.complexityTotal,
+            file.complexityAverage
+          ).lastInsertRowid;
+
+          for (const functionData of file.functions) {
+            insertFunction.run(
+              reportId,
+              fileId,
+              functionData.name,
+              functionData.line,
+              functionData.complexity
+            );
+          }
+        }
+      }
+    );
+
+    transaction(report, files);
   };
 
   static deleteReportCascade = async (reportId: number | bigint): Promise<void> => {
