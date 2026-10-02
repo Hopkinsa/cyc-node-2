@@ -89,8 +89,11 @@ class Report {
           latestReportStats: latestReport
             ? {
                 fileCount: latestReport.fileCount,
+                functionCount: latestReport.functionCount,
                 totalComplexity: latestReport.totalComplexity,
                 averageComplexity: latestReport.averageComplexity,
+                averageComplexityPerFunction:
+                  latestReport.averageComplexityPerFunction,
               }
             : null,
           reportHistory: projectReportsWithCurrentStats
@@ -131,8 +134,10 @@ class Report {
           ? reportStatsById.get(String(storedReport.id))
           : {
               fileCount: 0,
+              functionCount: 0,
               totalComplexity: 0,
               averageComplexity: 0,
+              averageComplexityPerFunction: 0,
               hiddenFileCount: 0,
               hiddenComplexity: 0,
             }),
@@ -186,6 +191,50 @@ class Report {
     } catch (error) {
       res.status(400).json({
         error: error instanceof Error ? error.message : 'Unable to generate reports.',
+      });
+    }
+  };
+
+  static generateTemporaryReport = async (
+    req: Request,
+    res: Response
+  ): Promise<void> => {
+    try {
+      const idx = Number.parseInt(req.params['idx'] as string, 10);
+      const report = REPORTS[idx];
+      if (!report) {
+        res.status(400).json({ error: 'Invalid report index.' });
+        return;
+      }
+
+      await GitlogReporting.generateTemporaryReport(report);
+      res.status(200).json({ message: 'Temporary report generated.' });
+    } catch (error) {
+      res.status(400).json({
+        error: error instanceof Error ? error.message : 'Unable to generate temporary report.',
+      });
+    }
+  };
+
+  static removeTemporaryReport = async (
+    req: Request,
+    res: Response
+  ): Promise<void> => {
+    try {
+      const idx = Number.parseInt(req.params['idx'] as string, 10);
+      const report = REPORTS[idx];
+      if (!report) {
+        res.status(400).json({ error: 'Invalid report index.' });
+        return;
+      }
+
+      const removed = await GitlogReporting.removeTemporaryReport(
+        GitlogReporting.getProjectKey(report)
+      );
+      res.status(200).json({ removed });
+    } catch (error) {
+      res.status(400).json({
+        error: error instanceof Error ? error.message : 'Unable to remove temporary report.',
       });
     }
   };

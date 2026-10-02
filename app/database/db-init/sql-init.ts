@@ -15,23 +15,60 @@ CREATE TABLE IF NOT EXISTS extraction_state (
 );
 `;
 
+export const REPORT_FUNCTION_STATS_BACKFILL_KEY = 'reports:function-stats-backfill:v1';
+
+export const MARK_REPORT_FUNCTION_STATS_BACKFILL_COMPLETE = `
+INSERT INTO extraction_state (key, value)
+VALUES (?, 'complete')
+ON CONFLICT(key) DO UPDATE SET value = excluded.value;
+`;
+
 export const REPORT_TABLE = `
 CREATE TABLE IF NOT EXISTS reports (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     project TEXT NOT NULL,
     report TEXT NOT NULL,
+        isTemporary INTEGER NOT NULL DEFAULT 0,
         timestamp INTEGER NOT NULL,
         fileCount INTEGER NOT NULL DEFAULT 0,
+        functionCount INTEGER NOT NULL DEFAULT 0,
         totalComplexity REAL NOT NULL DEFAULT 0,
-        averageComplexity REAL NOT NULL DEFAULT 0
+        averageComplexity REAL NOT NULL DEFAULT 0,
+        averageComplexityPerFunction REAL NOT NULL DEFAULT 0
 );
 `;
 
 export const REPORT_STATS_MIGRATIONS = [
+    'ALTER TABLE reports ADD COLUMN isTemporary INTEGER NOT NULL DEFAULT 0',
     'ALTER TABLE reports ADD COLUMN fileCount INTEGER NOT NULL DEFAULT 0',
+    'ALTER TABLE reports ADD COLUMN functionCount INTEGER NOT NULL DEFAULT 0',
     'ALTER TABLE reports ADD COLUMN totalComplexity REAL NOT NULL DEFAULT 0',
     'ALTER TABLE reports ADD COLUMN averageComplexity REAL NOT NULL DEFAULT 0',
+    'ALTER TABLE reports ADD COLUMN averageComplexityPerFunction REAL NOT NULL DEFAULT 0',
 ];
+
+export const REPORT_FUNCTION_STATS_BACKFILL = `
+UPDATE reports
+SET
+    functionCount = COALESCE((
+        SELECT SUM(totalFunctions)
+        FROM files
+        WHERE report_id = reports.id AND ${REPORT_VISIBLE_FILES_SQL}
+    ), 0),
+    averageComplexityPerFunction = CASE
+        WHEN COALESCE((
+            SELECT SUM(totalFunctions)
+            FROM files
+            WHERE report_id = reports.id AND ${REPORT_VISIBLE_FILES_SQL}
+        ), 0) > 0
+        THEN totalComplexity / (
+            SELECT SUM(totalFunctions)
+            FROM files
+            WHERE report_id = reports.id AND ${REPORT_VISIBLE_FILES_SQL}
+        )
+        ELSE 0
+    END;
+`;
 
 export const FILE_TABLE = `
 CREATE TABLE IF NOT EXISTS files (

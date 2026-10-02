@@ -12,7 +12,7 @@
         <div>
           <p class="eyebrow">Report browser</p>
           <h1 id="title">Loading report data...</h1>
-          <p id="subtitle" class="lede"></p>
+          <div id="subtitle" class="lede"></div>
         </div>
         <div class="hero-actions">
           <a class="secondary button-link" href="/dashboard">Back to dashboard</a>
@@ -31,13 +31,31 @@
             </div>
             <div class="chart-toggles" role="group" aria-label="Chart metrics">
               <button class="chart-toggle" type="button" data-metric="fileCount" aria-pressed="true">Files</button>
+              <button class="chart-toggle" type="button" data-metric="functionCount" aria-pressed="false">Functions</button>
               <button class="chart-toggle" type="button" data-metric="totalComplexity" aria-pressed="false">Total complexity</button>
               <button class="chart-toggle" type="button" data-metric="averageComplexity" aria-pressed="true">Average complexity</button>
+              <button class="chart-toggle" type="button" data-metric="averageComplexityPerFunction" aria-pressed="false">Average complexity per function</button>
             </div>
           </div>
           <div id="project-trend-chart" class="trend-chart"></div>
+          <div id="trend-range" class="trend-range" hidden>
+            <div class="trend-range-labels">
+              <span id="trend-range-start-label"></span>
+              <span id="trend-range-end-label"></span>
+            </div>
+            <div class="trend-range-inputs">
+              <label>
+                <span class="visually-hidden">Trend start date</span>
+                <input id="trend-range-start" type="range" step="1" />
+              </label>
+              <label>
+                <span class="visually-hidden">Trend end date</span>
+                <input id="trend-range-end" type="range" step="1" />
+              </label>
+            </div>
+          </div>
         </section>
-        <section class="panel">
+        <section class="panel stored-reports-panel">
           <div class="panel-header">
             <div>
               <p class="label">Stored reports</p>
@@ -45,28 +63,45 @@
             </div>
             <button id="generate-project" class="primary" type="button">Generate this project</button>
           </div>
+          <div id="stored-reports-pagination-top" class="stored-reports-pagination" hidden></div>
           <ul id="folders" class="folder-list"></ul>
+          <div id="stored-reports-pagination-bottom" class="stored-reports-pagination" hidden></div>
         </section>
 
-        <section class="panel">
-          <div class="panel-header">
-            <div>
-              <p class="label">Compare</p>
-              <h2>Compare stored runs</h2>
+        <div class="report-side-panels">
+          <section class="panel compare-panel">
+            <div class="panel-header">
+              <div>
+                <p class="label">Compare</p>
+                <h2>Compare stored runs</h2>
+              </div>
             </div>
-          </div>
-          <form id="compare-form" class="compare-form">
-            <label>
-              <span>First run</span>
-              <select id="compare-a"></select>
-            </label>
-            <label>
-              <span>Second run</span>
-              <select id="compare-b"></select>
-            </label>
-            <button class="primary" type="submit">Compare</button>
-          </form>
-        </section>
+            <form id="compare-form" class="compare-form">
+              <label for="compare-a">First run</label>
+              <div class="compare-select">
+                <select id="compare-a"></select>
+              </div>
+              <label for="compare-b">Second run</label>
+              <div class="compare-select">
+                <select id="compare-b"></select>
+              </div>
+              <button class="primary" type="submit">Compare</button>
+            </form>
+          </section>
+
+          <section class="panel temporary-report-panel">
+            <div class="panel-header">
+              <div>
+                <p class="label">Current local code</p>
+                <h2>Temporary report</h2>
+              </div>
+            </div>
+            <div id="temporary-report-stats" class="temporary-report-stats"></div>
+            <div id="temporary-report-actions" class="temporary-report-actions">
+              <button id="generate-temporary-report" class="primary" type="button">New</button>
+            </div>
+          </section>
+        </div>
 
         <section class="panel exclusion-panel">
           <div class="panel-header">

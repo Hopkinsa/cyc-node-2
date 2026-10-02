@@ -2,8 +2,10 @@ const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
 
 const SERIES = [
   { key: 'fileCount', label: 'Files', color: '#286f6c' },
+  { key: 'functionCount', label: 'Functions', color: '#426a9c' },
   { key: 'totalComplexity', label: 'Total complexity', color: '#9c4a25' },
   { key: 'averageComplexity', label: 'Average complexity', color: '#72558a' },
+  { key: 'averageComplexityPerFunction', label: 'Average complexity per function', color: '#4d7f56' },
 ];
 
 const createSvgElement = (name, attributes = {}) => {
