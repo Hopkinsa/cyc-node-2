@@ -62,6 +62,6 @@ reporting/
 .DS_Store
 Thumbs.db
 
-changes/
+/changes
 /config.json
 data/*.db
