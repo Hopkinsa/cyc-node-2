@@ -6,6 +6,7 @@ const SERIES = [
   { key: 'totalComplexity', label: 'Total complexity', color: '#9c4a25' },
   { key: 'averageComplexity', label: 'Average complexity', color: '#72558a' },
   { key: 'averageComplexityPerFunction', label: 'Average complexity per function', color: '#4d7f56' },
+  { key: 'highComplexityFileCount', label: 'High-complexity files', color: '#ad2525' },
 ];
 
 const createSvgElement = (name, attributes = {}) => {

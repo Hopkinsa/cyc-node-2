@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Complexity Analysis</title>
+    <link rel="stylesheet" href="/static/reports.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Complexity analysis</p>
+          <h1 id="title">Loading analysis...</h1>
+          <p id="subtitle" class="lede"></p>
+        </div>
+        <div class="hero-actions">
+          <a id="reports-link" class="secondary button-link" href="#">Back to reports</a>
+          <a class="secondary button-link" href="/dashboard">Back to dashboard</a>
+          <button id="refresh" class="primary" type="button">Refresh data</button>
+        </div>
+      </header>
+      <section id="message" class="message" aria-live="polite">Loading...</section>
+      <main>
+        <section class="panel analysis-panel">
+          <div class="panel-header">
+            <div>
+              <p class="label">Scope and hotspots</p>
+              <h2>Historical complexity</h2>
+            </div>
+          </div>
+          <div class="scope-controls">
+            <label class="scope-files-control" for="scope-files">
+              <span>Files</span>
+              <select id="scope-files" multiple size="8" aria-describedby="scope-files-help"></select>
+              <small id="scope-files-help">Leave empty for the whole application.</small>
+            </label>
+            <div class="scope-date-controls">
+              <label for="scope-start-date">Start date<input id="scope-start-date" type="date" /></label>
+              <label for="scope-end-date">End date<input id="scope-end-date" type="date" /></label>
+              <button id="scope-clear" class="secondary" type="button">Clear scope</button>
+            </div>
+          </div>
+          <p id="scope-summary" class="scope-summary"></p>
+          <div class="chart-toggles" role="group" aria-label="Analysis chart metrics">
+            <button class="scoped-chart-toggle" type="button" data-metric="totalComplexity" aria-pressed="false">Total complexity</button>
+            <button class="scoped-chart-toggle" type="button" data-metric="averageComplexityPerFunction" aria-pressed="true">Average per function</button>
+            <button class="scoped-chart-toggle" type="button" data-metric="highComplexityFileCount" aria-pressed="true">High-complexity files</button>
+          </div>
+          <div id="scoped-trend-chart" class="trend-chart"></div>
+          <div id="hotspot-table"></div>
+        </section>
+      </main>
+    </div>
+    <script type="module" src="/static/reports-analysis.js"></script>
+  </body>
+</html>
