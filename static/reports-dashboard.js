@@ -1,4 +1,4 @@
-import { renderReportTrend } from './report-chart.js';
+import { renderFunctionBaselineTrend } from './report-chart.js';
 
 const elements = {
   sourcePath: document.querySelector('#source-path'),
@@ -41,6 +41,12 @@ const loadDashboard = async () => {
   elements.projects.textContent = '';
 
   for (const project of data.projects) {
+    const trendResponse = await fetch(`/api/reports/${project.idx}/function-trends`);
+    const trendData = await trendResponse.json();
+    if (!trendResponse.ok) {
+      throw new Error(trendData.error || 'Unable to load function trends.');
+    }
+    const history = trendData.history.filter((run) => !run.isTemporary);
     const fragment = elements.template.content.cloneNode(true);
     fragment.querySelector('.project-key').textContent = project.projectKey;
     fragment.querySelector('.project-name').textContent = project.name;
@@ -49,13 +55,12 @@ const loadDashboard = async () => {
     fragment.querySelector('.project-latest').textContent = project.latestReport
       ? `${project.latestReport.report}`
       : 'No stored report';
-    fragment.querySelector('.chart-range').textContent = project.reportHistory.length
-      ? `${project.reportHistory.length} runs`
+    fragment.querySelector('.chart-range').textContent = history.length
+      ? `${history.length} runs`
       : 'No runs';
-    renderReportTrend(
+    renderFunctionBaselineTrend(
       fragment.querySelector('.trend-chart'),
-      project.reportHistory,
-      ['averageComplexity']
+      history
     );
 
     const reportLink = fragment.querySelector('.report-link');

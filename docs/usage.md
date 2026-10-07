@@ -165,18 +165,41 @@ Generation can take time because each report is calculated against a detached wo
 
 The status message reports exactly how many matching commits were synchronized and how many reports were generated. A result of `0 reports generated` can be successful: reports at the same project and commit timestamp are not regenerated.
 
-Each dashboard project card shows an average-complexity trend line across all available runs.
+Each dashboard project card shows **Change from baseline (%)** for **Total function complexity** and **Mean complexity per function** across saved runs, using the earliest run as the baseline. Metrics use individual function scores and the configured file exclusions. Temporary reports are excluded; zero or missing baseline values produce no percentage trend for that metric.
 
 ## Project Report Page
 
 The project page contains:
 
-- **Project history**: a responsive line chart across all stored runs. Use **Files**, **Total complexity**, and **Average complexity** to toggle individual lines. The chart key and vertical scale update to match the selected metrics.
-- **Complexity analysis**: open the dedicated analysis screen from the project page to analyse the whole application or selected files. Configure the start and end dates to limit the period, then toggle total complexity, average complexity per function, and high-complexity file counts. The hotspot table shows each file's latest and peak complexity, change over the selected period, and reports containing the file; it supports file-name filtering and sortable columns. The file filter applies 350 milliseconds after typing stops.
+- **Change from baseline (%)**: the same two function-complexity trends as the dashboard. Use the range sliders to select saved runs; the first run in the displayed range becomes the baseline. Reports are spaced by their actual dates, with a zero reference line.
+- **Complexity analysis**: opens the project analysis dashboard, with links to scope/hotspots, baseline changes, change attribution, persistent hotspots, complexity distribution, complexity concentration and module trends.
 - **Available runs**: each run lists its date, included-file count, total file complexity, and average complexity per file. Select a run to view its file-level results.
 - **Compare stored runs**: choose two runs and compare their file metrics. New, deleted, and changed files are included in the comparison.
 - **Third-party files**: add, amend, or remove per-project exact-path or `%` wildcard exclusion patterns. Save changes to persist them in `config.json` and refresh every stored run's visible file list and metrics immediately; regeneration is not required.
 - **Refresh data**: reloads the data for the current page. It does not synchronize gitlog or generate reports.
+
+### Project Analysis
+
+**Scope and hotspots** retains the file-scoped historical analysis. Select files and dates, toggle metrics, and review latest and peak file complexity. The hotspot table supports file-name filtering and sortable columns.
+
+**Baseline changes** uses individual stored function scores, with the same built-in and project-specific file exclusions. Select a fixed baseline report and date range; changing the date range does not change the baseline. Temporary reports are excluded by default and can be included explicitly.
+
+- **Change from baseline (%)**: `100 * (current / baseline - 1)`, with a zero reference line and reports spaced by their actual dates. Zero or missing baselines produce N/A, not an artificial percentage.
+- **Complexity per function**: arithmetic mean and nearest-rank 90th percentile of individual function scores. Unlike the legacy file-complexity metric, same-name functions are not deduplicated.
+- **High-complexity function rate (%)**: percentage of functions whose score is strictly greater than the selected threshold (default 10). Rate differences are displayed in percentage points (`pp`).
+- **Report history**: raw function counts, summed function complexity, mean, percentile, rate and baseline differences, with links to each stored run.
+
+Reports without function data have N/A means, percentiles and rates. These trends describe the changing project population, not a matched cohort of unchanged functions. Project growth and additions/removals should still be considered when interpreting the results.
+
+The additional analysis reports share the same page layout, first/last report selectors, optional temporary-report inclusion, and searchable, sortable, paginated tables. They use individual function scores after built-in and project exclusions; the stored database is unchanged.
+
+- **Change Attribution** splits the first-to-last complexity difference into added, removed, name-matched and unmatched contributions. Only unique `(file path, function name)` pairs are matched; line numbers are not identities. Renames and moves appear as additions/removals. Duplicate names remain unmatched, and their before/after complexity difference is included so all contributions reconcile to the net change. Name-based matches are inferred, not verified identities.
+- **Persistent Hotspots** ranks files containing at least one function strictly above the selected threshold. Persistence is hotspot runs divided by runs containing the file; period coverage uses all selected runs. Latest metrics are N/A for files absent from the last run. File renames are not matched.
+- **Complexity Distribution** shows function counts and percentages in the 1-5, 6-10, 11-20 and 21+ bands across the selected period. Empty function populations have N/A percentages.
+- **Complexity Concentration** measures the share of total complexity in the most complex selected percentage of functions (default 10%). The selected count rounds up to whole functions; the actual selected fraction is shown. Equal-score ties are ordered by path and line. The last run's selected functions are ranked in a separate table.
+- **Module Trends** groups files by a configurable number of directory levels (default 3). Select modules and compare means, high-complexity rates, function counts or total function complexity. The table compares means in the first and last reports; absent-module means are N/A.
+
+Change Frequency vs Complexity is not included; no additional Git history is collected for these reports.
 
 ### Run Summary Filters and Function Details
 

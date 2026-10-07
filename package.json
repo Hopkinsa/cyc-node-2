@@ -7,6 +7,7 @@
   "scripts": {
     "start": "nodemon --config nodemon.json",
     "desktop": "electron electron/main.cjs",
+    "test": "tsc --noEmit && node --loader ts-node/esm/transpile-only --test tests/*.test.mjs",
     "style": "prettier 'src/**/*.{ts, json}' --write",
     "lint": "npx eslint"
   },

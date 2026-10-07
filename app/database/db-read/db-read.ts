@@ -30,8 +30,10 @@ const DEBUG = 'db-read | ';
 
 type ReportFileStats = {
   fileCount: number;
+  functionCount: number;
   totalComplexity: number;
   averageComplexity: number;
+  averageComplexityPerFunction: number;
   hiddenFileCount: number;
   hiddenComplexity: number;
 };
@@ -158,15 +160,22 @@ class DBRead {
       (total, file) => total + file.fileComplexity,
       0
     );
+    const functionCount = visibleFiles.reduce(
+      (total, file) => total + file.totalFunctions,
+      0
+    );
     const hiddenFiles = files.filter(
       (file) => !shouldIncludeReportFile(file.filename, excludedFiles)
     );
 
     return {
       fileCount: visibleFiles.length,
+      functionCount,
       totalComplexity,
       averageComplexity:
         visibleFiles.length > 0 ? totalComplexity / visibleFiles.length : 0,
+      averageComplexityPerFunction:
+        functionCount > 0 ? totalComplexity / functionCount : 0,
       hiddenFileCount: hiddenFiles.length,
       hiddenComplexity: hiddenFiles.reduce(
         (total, file) => total + file.fileComplexity,
@@ -186,8 +195,10 @@ class DBRead {
       exclusionsByReportId.set(reportId, report.excludedFiles ?? []);
       statsByReportId.set(reportId, {
         fileCount: 0,
+        functionCount: 0,
         totalComplexity: 0,
         averageComplexity: 0,
+        averageComplexityPerFunction: 0,
         hiddenFileCount: 0,
         hiddenComplexity: 0,
       });
@@ -210,6 +221,7 @@ class DBRead {
 
       if (shouldIncludeReportFile(file.filename, exclusionsByReportId.get(reportId))) {
         stats.fileCount += 1;
+        stats.functionCount += file.totalFunctions;
         stats.totalComplexity += file.fileComplexity;
       } else {
         stats.hiddenFileCount += 1;
@@ -220,6 +232,8 @@ class DBRead {
     for (const stats of statsByReportId.values()) {
       stats.averageComplexity =
         stats.fileCount > 0 ? stats.totalComplexity / stats.fileCount : 0;
+      stats.averageComplexityPerFunction =
+        stats.functionCount > 0 ? stats.totalComplexity / stats.functionCount : 0;
     }
 
     return statsByReportId;
@@ -257,6 +271,70 @@ class DBRead {
     }
 
     return filesByReportId;
+  };
+
+  static getReportFunctionsForReports = async (
+    reports: Array<{ id: number | bigint; excludedFiles?: string[] }>
+  ): Promise<Map<string, Array<{ filename: string; name: string; line: number; complexity: number }>>> => {
+    const functionsByReportId = new Map<string, Array<{
+      filename: string; name: string; line: number; complexity: number;
+    }>>(reports.map((report) => [String(report.id), []]));
+    const exclusionsByReportId = new Map(
+      reports.map((report) => [String(report.id), report.excludedFiles ?? []])
+    );
+    if (reports.length === 0) return functionsByReportId;
+    const rows = DBService.db.prepare(`
+      SELECT functions.report_id, files.filename, functions.function AS name,
+        functions.line, functions.functionComplexity AS complexity
+      FROM functions
+      JOIN files ON files.id = functions.summary_id AND files.report_id = functions.report_id
+      WHERE functions.report_id IN (${reports.map(() => '?').join(', ')})
+    `).all(...reports.map((report) => report.id)) as Array<{
+      report_id: number; filename: string; name: string; line: number; complexity: number | null;
+    }>;
+    for (const row of rows) {
+      const reportId = String(row.report_id);
+      if (row.complexity !== null && Number.isFinite(row.complexity) &&
+        shouldIncludeReportFile(row.filename, exclusionsByReportId.get(reportId))) {
+        functionsByReportId.get(reportId)?.push({
+          filename: row.filename, name: row.name, line: row.line, complexity: row.complexity,
+        });
+      }
+    }
+    return functionsByReportId;
+  };
+
+  static getReportFunctionStatsForReports = async (
+    reports: Array<{ id: number | bigint; excludedFiles?: string[] }>,
+    threshold = 10
+  ): Promise<Map<string, {
+    functionCount: number;
+    totalFunctionComplexity: number;
+    meanFunctionComplexity: number | null;
+    percentile90: number | null;
+    highComplexityFunctionCount: number;
+    highComplexityFunctionRate: number | null;
+  }>> => {
+    const functionsByReportId = await DBRead.getReportFunctionsForReports(reports);
+    const complexitiesByReportId = new Map(Array.from(functionsByReportId,
+      ([reportId, functions]) => [reportId, functions.map((item) => item.complexity)]));
+
+    return new Map(Array.from(complexitiesByReportId, ([reportId, values]) => {
+      values.sort((left, right) => left - right);
+      const functionCount = values.length;
+      const totalFunctionComplexity = values.reduce((total, value) => total + value, 0);
+      const highComplexityFunctionCount = values.filter((value) => value > threshold).length;
+      return [reportId, {
+        functionCount,
+        totalFunctionComplexity,
+        meanFunctionComplexity: functionCount > 0 ? totalFunctionComplexity / functionCount : null,
+        percentile90: functionCount > 0 ? values[Math.ceil(functionCount * 0.9) - 1] : null,
+        highComplexityFunctionCount,
+        highComplexityFunctionRate: functionCount > 0
+          ? 100 * highComplexityFunctionCount / functionCount
+          : null,
+      }];
+    }));
   };
 
   static getFiles = async (): Promise<void> => {
