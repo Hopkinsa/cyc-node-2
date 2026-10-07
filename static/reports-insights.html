@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Project Analysis Report</title>
+    <link rel="stylesheet" href="/static/reports.css" />
+  </head>
+  <body class="project-analysis-page">
+    <div class="shell">
+      <header class="hero">
+        <div>
+          <p id="report-name" class="eyebrow">Project analysis</p>
+          <h1 id="title">Loading project...</h1>
+          <p id="subtitle" class="lede"></p>
+        </div>
+        <nav class="hero-actions" aria-label="Project navigation">
+          <a id="analysis-link" class="secondary button-link" href="#">Project analysis</a>
+          <a id="reports-link" class="secondary button-link" href="#">Back to reports</a>
+          <button id="refresh" class="primary" type="button">Refresh data</button>
+        </nav>
+      </header>
+      <p id="message" class="message" role="status">Loading analysis...</p>
+      <main>
+        <form id="insight-controls" class="panel analysis-controls insights-controls" aria-label="Report filters">
+          <label>First report<select id="start-report"></select></label>
+          <label>Last report<select id="end-report"></select></label>
+          <label id="threshold-control" hidden>Complexity threshold<input id="threshold" type="number" min="1" max="1000" step="1" value="10" required /></label>
+          <label id="top-control" hidden>Top functions (%)<input id="top-percent" type="number" min="1" max="100" step="1" value="10" required /></label>
+          <label id="depth-control" hidden>Directory levels<select id="depth"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select></label>
+          <label class="analysis-checkbox"><input id="include-temporary" type="checkbox" />Include temporary reports</label>
+        </form>
+        <div id="insight-results" hidden>
+          <p id="range-summary" class="scope-summary"></p>
+          <dl id="metric-summary" class="status-panel analysis-summary"></dl>
+          <p id="analysis-notice" class="message analysis-notice" hidden></p>
+          <section class="panel analysis-section" aria-labelledby="chart-heading">
+            <h2 id="chart-heading"></h2>
+            <div id="module-controls" class="analysis-controls insights-controls" hidden>
+              <label>Modules<select id="module-selection" multiple size="5"></select></label>
+              <label>Metric<select id="module-metric"><option value="Mean">Mean complexity / function</option><option value="Rate">High-complexity rate (%)</option><option value="Count">Functions</option><option value="Total">Total function complexity</option></select></label>
+            </div>
+            <div id="insight-chart" class="trend-chart"></div>
+          </section>
+          <section class="panel analysis-section" aria-labelledby="table-heading">
+            <h2 id="table-heading"></h2>
+            <div id="report-table"></div>
+          </section>
+          <section id="detail-section" class="panel analysis-section" aria-labelledby="detail-heading" hidden>
+            <h2 id="detail-heading">Highest-complexity functions in the last report</h2>
+            <div id="detail-table"></div>
+          </section>
+        </div>
+      </main>
+    </div>
+    <script type="module" src="/static/reports-insights.js"></script>
+  </body>
+</html>

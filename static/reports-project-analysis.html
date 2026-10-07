@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Project Analysis</title>
+    <link rel="stylesheet" href="/static/reports.css" />
+  </head>
+  <body class="project-analysis-page">
+    <div class="shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Project analysis</p>
+          <h1 id="title">Loading project...</h1>
+          <p id="subtitle" class="lede"></p>
+        </div>
+        <nav class="hero-actions" aria-label="Project navigation">
+          <a id="reports-link" class="secondary button-link" href="#">Back to reports</a>
+          <a class="secondary button-link" href="/dashboard">All projects</a>
+        </nav>
+      </header>
+      <p id="message" class="message" role="status">Loading analysis...</p>
+      <main id="analysis-content" hidden>
+        <dl class="status-panel analysis-summary">
+          <div><dt>Stored runs</dt><dd id="run-count"></dd></div>
+          <div><dt>Latest files</dt><dd id="file-count"></dd></div>
+          <div><dt>Latest functions</dt><dd id="function-count"></dd></div>
+          <div><dt>Latest report</dt><dd id="latest-report"></dd></div>
+        </dl>
+        <nav class="analysis-links" aria-label="Analysis reports">
+          <a id="hotspots-link" class="card analysis-report-link" href="#">
+            <span class="label">File analysis</span>
+            <h2>Scope and hotspots</h2>
+          </a>
+          <a id="trends-link" class="card analysis-report-link" href="#">
+            <span class="label">Function analysis</span>
+            <h2>Baseline changes</h2>
+          </a>
+          <a data-analysis-kind="attribution" class="card analysis-report-link" href="#">
+            <span class="label">Change analysis</span>
+            <h2>Change Attribution</h2>
+          </a>
+          <a data-analysis-kind="persistence" class="card analysis-report-link" href="#">
+            <span class="label">File analysis</span>
+            <h2>Persistent Hotspots</h2>
+          </a>
+          <a data-analysis-kind="distribution" class="card analysis-report-link" href="#">
+            <span class="label">Function analysis</span>
+            <h2>Complexity Distribution</h2>
+          </a>
+          <a data-analysis-kind="concentration" class="card analysis-report-link" href="#">
+            <span class="label">Function analysis</span>
+            <h2>Complexity Concentration</h2>
+          </a>
+          <a data-analysis-kind="modules" class="card analysis-report-link" href="#">
+            <span class="label">Directory analysis</span>
+            <h2>Module Trends</h2>
+          </a>
+        </nav>
+      </main>
+    </div>
+    <script type="module" src="/static/reports-project-analysis.js"></script>
+  </body>
+</html>

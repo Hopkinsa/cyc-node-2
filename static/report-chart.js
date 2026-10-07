@@ -1,5 +1,11 @@
 const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
 
+export const baselineChange = (value, baseline) => (
+  Number.isFinite(value) && Number.isFinite(baseline) && baseline !== 0
+    ? 100 * (value / baseline - 1)
+    : null
+);
+
 const SERIES = [
   { key: 'fileCount', label: 'Files', color: '#286f6c' },
   { key: 'functionCount', label: 'Functions', color: '#426a9c' },
@@ -8,6 +14,25 @@ const SERIES = [
   { key: 'averageComplexityPerFunction', label: 'Average complexity per function', color: '#4d7f56' },
   { key: 'highComplexityFileCount', label: 'High-complexity files', color: '#ad2525' },
 ];
+
+export const renderFunctionBaselineTrend = (container, history) => {
+  const series = [
+    { key: 'totalFunctionComplexity', label: 'Total function complexity', color: '#9c4a25' },
+    { key: 'meanFunctionComplexity', label: 'Mean complexity per function', color: '#286f6c' },
+  ];
+  const runs = history.filter((run) => !run.isTemporary && Number.isFinite(run.timestamp))
+    .slice().sort((left, right) => left.timestamp - right.timestamp);
+  const baseline = runs[0];
+  const changes = runs.map((run) => ({
+    timestamp: run.timestamp,
+    report: run.report,
+    ...Object.fromEntries(series.map(({ key }) => [key, baselineChange(run[key], baseline[key])])),
+  }));
+  renderReportTrend(container, changes, series.map(({ key }) => key), {
+    series, timeScale: true, signedValues: true, preserveMissing: true, unit: '%',
+    label: 'Total function complexity and mean complexity per function: percentage change from first displayed run',
+  });
+};
 
 const createSvgElement = (name, attributes = {}) => {
   const element = document.createElementNS(SVG_NAMESPACE, name);
@@ -21,11 +46,12 @@ const formatValue = (value) => Number(value).toLocaleString(undefined, {
   maximumFractionDigits: 2,
 });
 
-export const renderReportTrend = (container, reports, metricKeys = SERIES.map((series) => series.key)) => {
+export const renderReportTrend = (container, reports, metricKeys = SERIES.map((series) => series.key), options = {}) => {
   container.textContent = '';
 
   const chartData = reports.filter((report) => Number.isFinite(report.timestamp));
-  const activeSeries = SERIES.filter((series) => metricKeys.includes(series.key));
+  if (options.timeScale) chartData.sort((left, right) => left.timestamp - right.timestamp);
+  const activeSeries = (options.series || SERIES).filter((series) => metricKeys.includes(series.key));
   if (chartData.length === 0) {
     const empty = document.createElement('p');
     empty.className = 'chart-empty';
@@ -47,12 +73,29 @@ export const renderReportTrend = (container, reports, metricKeys = SERIES.map((s
   const padding = { top: 18, right: 16, bottom: 34, left: 48 };
   const plotWidth = width - padding.left - padding.right;
   const plotHeight = height - padding.top - padding.bottom;
-  const values = chartData.flatMap((report) => activeSeries.map((series) => Number(report[series.key]) || 0));
-  const maximum = Math.max(...values, 1);
-  const xForIndex = (index) => chartData.length === 1
-    ? padding.left + (plotWidth / 2)
-    : padding.left + ((plotWidth * index) / (chartData.length - 1));
-  const yForValue = (value) => padding.top + plotHeight - ((value / maximum) * plotHeight);
+  const valueFor = (report, key) => options.preserveMissing
+    ? (Number.isFinite(report[key]) ? report[key] : null)
+    : (Number(report[key]) || 0);
+  const values = chartData.flatMap((report) => activeSeries
+    .map((series) => valueFor(report, series.key)).filter((value) => value !== null));
+  const minimum = options.signedValues ? Math.min(...values, 0) : 0;
+  const maximum = Math.max(...values, options.signedValues ? 0 : 1);
+  const valueRange = maximum - minimum || 1;
+  const timeRange = chartData.at(-1).timestamp - chartData[0].timestamp;
+  const xForIndex = (index) => {
+    if (chartData.length === 1 || (options.timeScale && timeRange === 0)) {
+      return padding.left + plotWidth / 2;
+    }
+    const ratio = options.timeScale
+      ? (chartData[index].timestamp - chartData[0].timestamp) / timeRange
+      : index / (chartData.length - 1);
+    return padding.left + plotWidth * ratio;
+  };
+  const yForValue = (value) => padding.top + plotHeight - (((value - minimum) / valueRange) * plotHeight);
+  const formatAxisValue = (value) => `${formatValue(value)}${options.unit || ''}`;
+  const formatDate = (run) => options.timeScale
+    ? new Date(run.timestamp * 1000).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+    : run.report;
 
   const legend = document.createElement('div');
   legend.className = 'chart-key';
@@ -69,7 +112,7 @@ export const renderReportTrend = (container, reports, metricKeys = SERIES.map((s
     class: 'chart-svg',
     viewBox: `0 0 ${width} ${height}`,
     role: 'img',
-    'aria-label': 'Report metrics trend chart',
+    'aria-label': options.label || 'Report metrics trend chart',
   });
 
   [0, 0.5, 1].forEach((ratio) => {
@@ -88,9 +131,19 @@ export const renderReportTrend = (container, reports, metricKeys = SERIES.map((s
       class: 'chart-axis-label',
       'text-anchor': 'end',
     });
-    label.textContent = formatValue(maximum * (1 - ratio));
+    label.textContent = formatAxisValue(maximum - (maximum - minimum) * ratio);
     svg.append(label);
   });
+
+  if (options.signedValues) {
+    svg.append(createSvgElement('line', {
+      x1: padding.left,
+      y1: yForValue(0),
+      x2: width - padding.right,
+      y2: yForValue(0),
+      class: 'chart-baseline-line',
+    }));
+  }
 
   const firstLabel = createSvgElement('text', {
     x: xForIndex(0),
@@ -98,7 +151,7 @@ export const renderReportTrend = (container, reports, metricKeys = SERIES.map((s
     class: 'chart-axis-label',
     'text-anchor': chartData.length === 1 ? 'middle' : 'start',
   });
-  firstLabel.textContent = chartData[0].report;
+  firstLabel.textContent = formatDate(chartData[0]);
   svg.append(firstLabel);
 
   if (chartData.length > 1) {
@@ -108,23 +161,35 @@ export const renderReportTrend = (container, reports, metricKeys = SERIES.map((s
       class: 'chart-axis-label',
       'text-anchor': 'end',
     });
-    lastLabel.textContent = chartData.at(-1).report;
+    lastLabel.textContent = formatDate(chartData.at(-1));
     svg.append(lastLabel);
   }
 
   activeSeries.forEach((series) => {
     const points = chartData.map((report, index) => {
-      const value = Number(report[series.key]) || 0;
-      return [xForIndex(index), yForValue(value)];
+      const value = valueFor(report, series.key);
+      return value === null ? null : [xForIndex(index), yForValue(value)];
+    });
+    let connected = false;
+    const segments = points.map((point) => {
+      if (!point) {
+        connected = false;
+        return '';
+      }
+      const segment = `${connected ? 'L' : 'M'} ${point[0]} ${point[1]}`;
+      connected = true;
+      return segment;
     });
     const path = createSvgElement('path', {
-      d: points.map(([x, y], index) => `${index === 0 ? 'M' : 'L'} ${x} ${y}`).join(' '),
+      d: segments.join(' '),
       class: 'chart-series-line',
       stroke: series.color,
     });
     svg.append(path);
 
-    points.forEach(([x, y], index) => {
+    points.forEach((coordinates, index) => {
+      if (!coordinates) return;
+      const [x, y] = coordinates;
       const point = createSvgElement('circle', {
         cx: x,
         cy: y,
@@ -133,7 +198,7 @@ export const renderReportTrend = (container, reports, metricKeys = SERIES.map((s
         class: 'chart-point',
       });
       const title = createSvgElement('title');
-      title.textContent = `${chartData[index].report}: ${series.label} ${formatValue(chartData[index][series.key])}`;
+      title.textContent = `${chartData[index].report}: ${series.label} ${formatAxisValue(chartData[index][series.key])}`;
       point.append(title);
       svg.append(point);
     });

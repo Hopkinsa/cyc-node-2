@@ -1,4 +1,4 @@
-import { renderReportTrend } from './report-chart.js';
+import { renderFunctionBaselineTrend } from './report-chart.js';
 
 const elements = {
   title: document.querySelector('#title'),
@@ -31,7 +31,6 @@ const elements = {
   trendRangeEnd: document.querySelector('#trend-range-end'),
   trendRangeStartLabel: document.querySelector('#trend-range-start-label'),
   trendRangeEndLabel: document.querySelector('#trend-range-end-label'),
-  chartToggles: document.querySelectorAll('.chart-toggle'),
   exclusionList: document.querySelector('#exclusion-list'),
   addExclusion: document.querySelector('#add-exclusion'),
   saveExclusions: document.querySelector('#save-exclusions'),
@@ -50,7 +49,6 @@ let exclusionPatterns = [];
 let savedReports = [];
 let storedReportsPage = 0;
 let storedReportsPageSize = '5';
-const activeTrendMetrics = new Set(['fileCount', 'averageComplexity']); // 'totalComplexity',
 const summaryTableState = {
   rows: [],
   columns: [],
@@ -65,10 +63,9 @@ const summaryTableState = {
 };
 
 const renderProjectTrend = () => {
-  renderReportTrend(
+  renderFunctionBaselineTrend(
     elements.projectTrendChart,
-    projectHistory.slice(trendRangeStart, trendRangeEnd + 1),
-    Array.from(activeTrendMetrics)
+    projectHistory.slice(trendRangeStart, trendRangeEnd + 1)
   );
 };
 
@@ -776,10 +773,17 @@ const renderTable = (rows, columns) => {
 };
 
 const loadProjectView = async () => {
-  const response = await fetch(`/api/reports/${reportIdx}`);
+  const [response, trendResponse] = await Promise.all([
+    fetch(`/api/reports/${reportIdx}`),
+    fetch(`/api/reports/${reportIdx}/function-trends`),
+  ]);
   const data = await response.json();
   if (!response.ok) {
     throw new Error(data.error || 'Unable to load project report data.');
+  }
+  const trendData = await trendResponse.json();
+  if (!trendResponse.ok) {
+    throw new Error(trendData.error || 'Unable to load function trends.');
   }
 
   elements.title.textContent = data.report.NAME;
@@ -789,7 +793,7 @@ const loadProjectView = async () => {
   exclusionPatterns = data.report.EXCLUDE_FILES || [];
   renderExclusionList();
   showProjectView();
-  projectHistory = data.storedReports.slice().reverse();
+  projectHistory = trendData.history.filter((run) => !run.isTemporary);
   trendRangeStart = 0;
   trendRangeEnd = Math.max(projectHistory.length - 1, 0);
   updateTrendRange();
@@ -989,24 +993,6 @@ elements.compareBack.addEventListener('click', () => {
 elements.refresh.addEventListener('click', () => {
   loadCurrentView().catch((error) => {
     setStatus(error instanceof Error ? error.message : 'Unable to refresh.', 'error');
-  });
-});
-
-elements.chartToggles.forEach((toggle) => {
-  toggle.addEventListener('click', () => {
-    const metric = toggle.dataset.metric;
-    if (!metric) {
-      return;
-    }
-
-    if (activeTrendMetrics.has(metric)) {
-      activeTrendMetrics.delete(metric);
-    } else {
-      activeTrendMetrics.add(metric);
-    }
-
-    toggle.setAttribute('aria-pressed', String(activeTrendMetrics.has(metric)));
-    renderProjectTrend();
   });
 });
 

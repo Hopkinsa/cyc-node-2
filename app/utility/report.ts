@@ -5,6 +5,7 @@ import { IReportConfig } from '../interface/config.interface.ts';
 import GitlogReporting from './gitlog-reporting.ts';
 import DBRead from '../database/db-read/db-read.ts';
 import { STATIC_PATH } from './helpers.ts';
+import { ANALYSIS_REPORTS, AnalysisKind, buildProjectAnalysis } from './project-analysis.ts';
 
 const REPORTS = config.REPORTS;
 
@@ -21,7 +22,121 @@ class Report {
     _req: Request,
     res: Response
   ): Promise<void> => {
+    res.sendFile(path.join(STATIC_PATH, 'reports-project-analysis.html'));
+  };
+
+  static getComplexityHotspots = async (
+    _req: Request,
+    res: Response
+  ): Promise<void> => {
     res.sendFile(path.join(STATIC_PATH, 'reports-analysis.html'));
+  };
+
+  static getBaselineAnalysis = async (
+    _req: Request,
+    res: Response
+  ): Promise<void> => {
+    res.sendFile(path.join(STATIC_PATH, 'reports-baseline.html'));
+  };
+
+  static getProjectInsightPage = async (req: Request, res: Response): Promise<void> => {
+    if (!Object.hasOwn(ANALYSIS_REPORTS, String(req.params['kind']))) {
+      res.status(404).json({ error: 'Unknown analysis report.' });
+      return;
+    }
+    res.sendFile(path.join(STATIC_PATH, 'reports-insights.html'));
+  };
+
+  static getProjectInsightData = async (req: Request, res: Response): Promise<void> => {
+    const idx = Number(req.params['idx']);
+    const report = Number.isInteger(idx) ? REPORTS[idx] : undefined;
+    const kind = String(req.params['kind']) as AnalysisKind;
+    const threshold = req.query['threshold'] === undefined ? 10 : Number(req.query['threshold']);
+    const topPercent = req.query['topPercent'] === undefined ? 10 : Number(req.query['topPercent']);
+    const depth = req.query['depth'] === undefined ? 3 : Number(req.query['depth']);
+    const temporary = req.query['temporary'];
+    if (!report || !Object.hasOwn(ANALYSIS_REPORTS, kind) ||
+      !Number.isInteger(threshold) || threshold < 1 || threshold > 1000 ||
+      !Number.isInteger(topPercent) || topPercent < 1 || topPercent > 100 ||
+      !Number.isInteger(depth) || depth < 1 || depth > 10 ||
+      (temporary !== undefined && temporary !== 'true' && temporary !== 'false')) {
+      res.status(400).json({ error: 'Invalid project, report type or analysis parameters.' });
+      return;
+    }
+    const projectKey = 'PROJECT' in report ? report.PROJECT : report.FOLDER;
+    const history = (await DBRead.getReports())
+      .filter((stored) => stored.project === projectKey && (temporary === 'true' || !stored.isTemporary))
+      .sort((left, right) => left.timestamp - right.timestamp);
+    const startIndex = req.query['start'] === undefined ? 0
+      : history.findIndex((stored) => Number(stored.id) === Number(req.query['start']));
+    const endIndex = req.query['end'] === undefined ? history.length - 1
+      : history.findIndex((stored) => Number(stored.id) === Number(req.query['end']));
+    if ((history.length > 0 && (startIndex < 0 || endIndex < startIndex)) ||
+      (history.length === 0 && (req.query['start'] !== undefined || req.query['end'] !== undefined))) {
+      res.status(400).json({ error: 'Select valid reports from this project in chronological order.' });
+      return;
+    }
+    const selected = history.slice(startIndex, endIndex + 1);
+    const targets = kind === 'attribution' && selected.length > 1
+      ? [selected[0], selected.at(-1)!] : selected;
+    const functions = await DBRead.getReportFunctionsForReports(targets.flatMap((stored) => (
+      stored.id ? [{ id: stored.id, excludedFiles: report.EXCLUDE_FILES }] : []
+    )));
+    const runs = targets.map((stored) => ({
+      id: Number(stored.id), timestamp: stored.timestamp, report: stored.report,
+      functions: functions.get(String(stored.id)) ?? [],
+    }));
+    const insight = buildProjectAnalysis(kind, runs, { threshold, topPercent, depth });
+    res.status(200).json({
+      name: report.NAME, projectKey, kind, title: ANALYSIS_REPORTS[kind],
+      threshold, topPercent, depth,
+      period: { start: selected[0]?.report, end: selected.at(-1)?.report, runs: selected.length },
+      ...insight,
+      notice: [
+        runs.some((run) => run.functions.length === 0)
+          ? 'Some selected reports have no function data. Averages and rates are N/A; changes involving these snapshots may reflect missing data.' : '',
+        insight.notice ?? '',
+      ].filter(Boolean).join(' '),
+    });
+  };
+
+  static getFunctionTrends = async (
+    req: Request,
+    res: Response
+  ): Promise<void> => {
+    const idx = Number(req.params['idx']);
+    const report = Number.isInteger(idx) ? REPORTS[idx] : undefined;
+    const threshold = req.query['threshold'] === undefined ? 10 : Number(req.query['threshold']);
+    if (!report || !Number.isInteger(threshold) || threshold < 1 || threshold > 1000) {
+      res.status(400).json({ error: 'Invalid project or complexity threshold (1-1000).' });
+      return;
+    }
+
+    const projectKey = 'PROJECT' in report ? report.PROJECT : report.FOLDER;
+    const storedReports = (await DBRead.getReports())
+      .filter((storedReport) => storedReport.project === projectKey)
+      .sort((left, right) => left.timestamp - right.timestamp);
+    const targets = storedReports.flatMap((storedReport) => (
+      storedReport.id ? [{ id: storedReport.id, excludedFiles: report.EXCLUDE_FILES }] : []
+    ));
+    const [fileStats, functionStats] = await Promise.all([
+      DBRead.getReportFileStatsForReports(targets),
+      DBRead.getReportFunctionStatsForReports(targets, threshold),
+    ]);
+
+    res.status(200).json({
+      projectKey,
+      name: report.NAME,
+      threshold,
+      history: storedReports.map((storedReport) => ({
+        id: Number(storedReport.id),
+        timestamp: storedReport.timestamp,
+        report: storedReport.report,
+        isTemporary: Boolean(storedReport.isTemporary),
+        fileCount: fileStats.get(String(storedReport.id))?.fileCount ?? 0,
+        ...functionStats.get(String(storedReport.id)),
+      })),
+    });
   };
 
   static getHelp = async (_req: Request, res: Response): Promise<void> => {

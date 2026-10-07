@@ -55,10 +55,13 @@ class DBUpdate {
       .run(
         data.project,
         data.report,
+        data.isTemporary ? 1 : 0,
         data.timestamp,
         data.fileCount,
+        data.functionCount ?? 0,
         data.totalComplexity,
-        data.averageComplexity
+        data.averageComplexity,
+        data.averageComplexityPerFunction ?? 0
       );
 
     const priKey = result.lastInsertRowid;
@@ -114,10 +117,13 @@ class DBUpdate {
         const reportId = insertReport.run(
           reportData.project,
           reportData.report,
+          reportData.isTemporary ? 1 : 0,
           reportData.timestamp,
           reportData.fileCount,
+          reportData.functionCount ?? 0,
           reportData.totalComplexity,
-          reportData.averageComplexity
+          reportData.averageComplexity,
+          reportData.averageComplexityPerFunction ?? 0
         ).lastInsertRowid;
 
         for (const file of fileData) {
