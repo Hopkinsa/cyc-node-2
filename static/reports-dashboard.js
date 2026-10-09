@@ -1,4 +1,10 @@
-import { renderReportTrend } from './report-chart.js';
+import './report-snackbar.js';
+import { baselineChange, renderReportTrend } from './report-chart.js';
+
+const growthSeries = [
+  { key: 'fileCount', label: 'Included files', color: '#426a9c' },
+  { key: 'meanFunctionComplexity', label: 'Mean complexity per function', color: '#286f6c' },
+];
 
 const elements = {
   sourcePath: document.querySelector('#source-path'),
@@ -41,6 +47,13 @@ const loadDashboard = async () => {
   elements.projects.textContent = '';
 
   for (const project of data.projects) {
+    const trendResponse = await fetch(`/api/reports/${project.idx}/function-trends`);
+    const trendData = await trendResponse.json();
+    if (!trendResponse.ok) {
+      throw new Error(trendData.error || 'Unable to load function trends.');
+    }
+    const history = trendData.history.filter((run) => !run.isTemporary && Number.isFinite(run.timestamp))
+      .sort((left, right) => left.timestamp - right.timestamp);
     const fragment = elements.template.content.cloneNode(true);
     fragment.querySelector('.project-key').textContent = project.projectKey;
     fragment.querySelector('.project-name').textContent = project.name;
@@ -49,13 +62,23 @@ const loadDashboard = async () => {
     fragment.querySelector('.project-latest').textContent = project.latestReport
       ? `${project.latestReport.report}`
       : 'No stored report';
-    fragment.querySelector('.chart-range').textContent = project.reportHistory.length
-      ? `${project.reportHistory.length} runs`
+    fragment.querySelector('.chart-range').textContent = history.length
+      ? `${history.length} runs`
       : 'No runs';
+    const baseline = history[0];
+    const changes = history.map((run) => ({
+      timestamp: run.timestamp,
+      report: run.report,
+      ...Object.fromEntries(growthSeries.map(({ key }) => [key, baselineChange(run[key], baseline[key])])),
+    }));
     renderReportTrend(
       fragment.querySelector('.trend-chart'),
-      project.reportHistory,
-      ['averageComplexity']
+      changes,
+      growthSeries.map(({ key }) => key),
+      {
+        series: growthSeries, timeScale: true, signedValues: true, preserveMissing: true, unit: '%',
+        label: 'Growth and Complexity: included files and mean complexity per function percentage change from first saved run',
+      }
     );
 
     const reportLink = fragment.querySelector('.report-link');

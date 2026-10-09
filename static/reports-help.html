@@ -30,15 +30,15 @@
           <div class="help-grid">
             <article>
               <h3>Dashboard</h3>
-              <p>See the configured projects, their GitLog rows, stored report count, latest run, and the average-complexity trend. Sync GitLog to import matching commits, or generate reports for one project or all projects.</p>
+              <p>See the configured projects, their GitLog rows, stored report count, latest run, and Change from baseline (%) chart. Each chart shows Total function complexity and Mean complexity per function relative to the earliest saved run. Sync GitLog to import matching commits, or generate reports for one project or all projects.</p>
             </article>
             <article>
               <h3>Project reports</h3>
-              <p>Choose a project to view its stored runs, their file count, function count, complexity averages per file and function, and a trend chart. Toggle each metric to change the chart.</p>
+              <p>Choose a project to view its saved runs and the same two baseline trends as the dashboard. Use the range sliders to narrow the period; the first displayed run becomes the baseline. Positive percentages mean an increase, negative percentages mean a decrease, and the zero line marks the baseline value. Temporary runs are excluded from these charts.</p>
             </article>
             <article>
               <h3>Complexity analysis</h3>
-              <p>Open Complexity analysis from a project report to review the application or selected files over a chosen date range. The hotspot table shows the latest total complexity, change and peak in the period, and reports containing the file.</p>
+              <p>Open Complexity analysis from a project report to reach the Project analysis dashboard. It links to Growth and Complexity, Scope and hotspots, Baseline changes, Change Attribution, Persistent Hotspots, Complexity Distribution, Complexity Concentration, and Module Trends. Choose the report that answers your question using the explanations below.</p>
             </article>
             <article>
               <h3>Run summary</h3>
@@ -48,7 +48,66 @@
               <h3>File exclusions</h3>
               <p>Add or remove project-specific exact paths or path patterns. Use <code>%</code> as a wildcard. Saved exclusions are persisted in <code>config.json</code> and immediately change visible dashboard, report, summary, and comparison metrics; original report data remains stored.</p>
             </article>
+            <article>
+              <h3>Current local code</h3>
+              <p>Generate a temporary report to analyze the current local code rather than a historical commit. It appears separately from saved runs and replaces the previous temporary report for that project. Analysis reports exclude temporary runs by default; select Include temporary reports to add them to an analysis.</p>
+            </article>
           </div>
+        </section>
+
+        <section class="panel help-section">
+          <div class="panel-header">
+            <div>
+              <p class="label">Project analysis</p>
+              <h2>Choose an analysis report</h2>
+            </div>
+          </div>
+          <div class="help-grid">
+            <article>
+              <h3>Growth and Complexity</h3>
+              <p>Compare included file growth with mean complexity per function against a fixed baseline. The management comparison lists baseline, latest, absolute difference, and percentage change. The history table also includes function counts.</p>
+              <p>More files and a lower mean indicate simpler functions, not necessarily less total complexity. Splitting files alone does not reduce function complexity. All runs use the current project exclusions; changing exclusions changes historical scope. Temporary runs are excluded by default, and percentage changes from a zero baseline are N/A.</p>
+            </article>
+            <article>
+              <h3>Scope and hotspots</h3>
+              <p>Review historical file-level metrics for the whole project or selected files over a date range. Toggle metrics and use the hotspot table to compare each file's latest complexity, change, peak, and number of reports containing it.</p>
+              <p>Use this report to locate files worth investigating. Its legacy file-complexity totals count repeated function names once; the function-based reports below count every function entry.</p>
+            </article>
+            <article>
+              <h3>Baseline changes</h3>
+              <p>Choose a fixed baseline run and date range to compare function counts, total function complexity, mean complexity, the 90th percentile, and the high-complexity function rate. Unlike the simplified project chart, changing the date range does not change the selected baseline.</p>
+              <p>The percentage chart measures relative change. Complexity per function shows the raw mean and 90th percentile, while the high-complexity chart shows the percentage above your threshold, default 10. The history table includes raw values and baseline differences. Rate differences use percentage points: a rise from 10% to 12% is +2 pp.</p>
+            </article>
+            <article>
+              <h3>Change Attribution</h3>
+              <p>Explain the net change in total function complexity between the first and last selected runs. Contributions from added, removed, name-matched, and unmatched functions sum to the overall difference. Positive contributions add complexity; negative contributions remove it.</p>
+              <p>Functions are matched only when a file path and function name uniquely identify an entry in both runs. Renames and moves appear as additions/removals; duplicate names remain unmatched. A name-based match is an inference, not a verified function identity.</p>
+            </article>
+            <article>
+              <h3>Persistent Hotspots</h3>
+              <p>Find files that repeatedly contain at least one function strictly above the selected complexity threshold. Persistence is hotspot runs divided by runs containing the file. Period coverage is runs containing the file divided by all selected runs.</p>
+              <p>Read both percentages together: a file present in only one run can have 100% persistence but low coverage. Latest metrics are N/A when the file is absent from the last run. Renamed paths are treated as different files.</p>
+            </article>
+            <article>
+              <h3>Complexity Distribution</h3>
+              <p>Compare function counts and percentages in the 1-5, 6-10, 11-20, and 21+ complexity bands across the selected period. Use the percentages to see whether the mix is shifting toward simpler or more complex functions, and the counts to see changes in project size.</p>
+              <p>These score bands are fixed, unlike the configurable threshold used by hotspot and high-complexity-rate reports. Percentages are N/A for runs without functions.</p>
+            </article>
+            <article>
+              <h3>Complexity Concentration</h3>
+              <p>Measure how much of the total function complexity belongs to the most complex percentage of functions, default 10%. A large share means complexity is concentrated in a relatively small set of functions. The last run's ranked-function table identifies that set and shows its cumulative share.</p>
+              <p>The selected count rounds up to whole functions, so the actual selected percentage can exceed the requested value, especially in small projects. Equal-score ties are ordered by file path and line.</p>
+            </article>
+            <article>
+              <h3>Module Trends</h3>
+              <p>Group files by their first directory levels, default 3, to compare parts of the project. Select modules and a metric: mean function complexity, high-complexity function rate, function count, or total function complexity. Root-level files form the (root) group.</p>
+              <p>The table compares each module's mean in the first and last selected runs and shows how many runs contain it. Missing-module means are N/A, not zero. Directory depth changes the grouping; these modules are path groups, not inferred architectural boundaries.</p>
+            </article>
+          </div>
+          <aside class="help-note">
+            <strong>Reading historical changes</strong>
+            <span>Function-based analysis uses individual stored function scores after the same built-in and project-specific exclusions. First/last run selectors define the period for the five additional reports; their tables support searching, sorting, and page-size selection. Growth, deletions, and changing scope can affect trends, so a lower total alone does not prove that existing functions became simpler. These reports do not measure Git change frequency.</span>
+          </aside>
         </section>
 
         <section class="panel help-section">
@@ -116,7 +175,27 @@
             </div>
             <div class="calculation-row">
               <h3>Report Average Complexity Per Function</h3>
-              <p>Report Total Complexity divided by the total number of included functions. A report with no included functions has an average of 0.</p>
+              <p>Report Total Complexity divided by the total number of included functions. A report with no included functions has an average of 0. This legacy value can differ from the analysis reports' mean because Report Total Complexity deduplicates repeated function names.</p>
+            </div>
+            <div class="calculation-row">
+              <h3>Total function complexity</h3>
+              <p>The sum of every included function entry's complexity, including repeated names. This is the total used by function-based analysis and the simplified baseline charts.</p>
+            </div>
+            <div class="calculation-row">
+              <h3>Mean complexity per function</h3>
+              <p>Total function complexity divided by the included function count. This arithmetic mean measures typical function complexity rather than project size. It is N/A when no function data is available.</p>
+            </div>
+            <div class="calculation-row">
+              <h3>90th percentile</h3>
+              <p>Sort individual function scores from lowest to highest and take the nearest-rank score at 90% of the count, rounding the rank up. At least 90% of included functions have complexity at or below this score. It highlights the upper end of the distribution and is N/A without functions.</p>
+            </div>
+            <div class="calculation-row">
+              <h3>High-complexity function rate</h3>
+              <p><code>100 * functions above threshold / function count</code>. A function exactly equal to the threshold is not included. The rate is N/A without functions; it is distinct from the fixed 21+ score-colour band.</p>
+            </div>
+            <div class="calculation-row">
+              <h3>Change from baseline (%)</h3>
+              <p><code>100 * (current / baseline - 1)</code>. For example, a change from 100 to 120 is +20%, and a change from 100 to 80 is -20%. Zero or missing baseline values have no meaningful percentage: analysis tables show N/A and charts leave gaps rather than inventing a value. Charts space runs by their actual dates.</p>
             </div>
           </div>
           <aside class="help-note">

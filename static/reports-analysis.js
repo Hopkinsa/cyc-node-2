@@ -1,3 +1,4 @@
+import './report-snackbar.js';
 import { renderReportTrend } from './report-chart.js';
 
 const elements = {
@@ -272,6 +273,7 @@ const loadAnalysis = async () => {
   elements.title.textContent = reportData.report.NAME;
   elements.subtitle.textContent = `Historical complexity for ${trendData.projectKey}`;
   elements.reportsLink.href = `/reports/${reportIdx}`;
+  document.querySelector('#analysis-link').href = `/reports/${reportIdx}/analysis`;
   scopedHistory = trendData.history;
   renderFileOptions();
   resetDateRange();

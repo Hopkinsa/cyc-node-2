@@ -24,38 +24,6 @@
       <section id="message" class="message" aria-live="polite">Loading...</section>
 
       <main id="project-view" class="layout hidden">
-        <section class="panel project-trend-panel">
-          <div class="panel-header">
-            <div>
-              <p class="label">Report trend</p>
-              <h2>Project history</h2>
-            </div>
-            <div class="chart-toggles" role="group" aria-label="Chart metrics">
-              <button class="chart-toggle" type="button" data-metric="fileCount" aria-pressed="true">Files</button>
-              <button class="chart-toggle" type="button" data-metric="functionCount" aria-pressed="false">Functions</button>
-              <button class="chart-toggle" type="button" data-metric="totalComplexity" aria-pressed="false">Total complexity</button>
-              <button class="chart-toggle" type="button" data-metric="averageComplexity" aria-pressed="true">Average complexity</button>
-              <button class="chart-toggle" type="button" data-metric="averageComplexityPerFunction" aria-pressed="false">Average complexity per function</button>
-            </div>
-          </div>
-          <div id="project-trend-chart" class="trend-chart"></div>
-          <div id="trend-range" class="trend-range" hidden>
-            <div class="trend-range-labels">
-              <span id="trend-range-start-label"></span>
-              <span id="trend-range-end-label"></span>
-            </div>
-            <div class="trend-range-inputs">
-              <label>
-                <span class="visually-hidden">Trend start date</span>
-                <input id="trend-range-start" type="range" step="1" />
-              </label>
-              <label>
-                <span class="visually-hidden">Trend end date</span>
-                <input id="trend-range-end" type="range" step="1" />
-              </label>
-            </div>
-          </div>
-        </section>
         <section class="panel stored-reports-panel">
           <div class="panel-header">
             <div>

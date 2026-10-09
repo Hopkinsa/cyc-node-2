@@ -152,7 +152,7 @@ You can also maintain these exclusions from the project report page. Saving chan
 1. Open the dashboard.
 2. Select **Sync gitlog** to discover relevant commits.
 3. Select **Generate all reports** to process every configured project, or **Generate reports** on one project card to process only that project.
-4. Select **View reports** to inspect the runs, trend chart, report details, or compare two runs.
+4. Select **View reports** to inspect saved runs, open report details, generate a temporary report, or compare two runs. Select **Complexity analysis** for historical charts and detailed analysis.
 
 Generation can take time because each report is calculated against a detached worktree at the matching historical commit.
 
@@ -163,20 +163,51 @@ Generation can take time because each report is calculated against a detached wo
 - **Generate reports**: generates missing reports only for that project.
 - **View reports**: opens the project report page once the project has stored runs.
 
-The status message reports exactly how many matching commits were synchronized and how many reports were generated. A result of `0 reports generated` can be successful: reports at the same project and commit timestamp are not regenerated.
+Status messages appear in a snackbar at the bottom of each report page rather than in a section above the report. Loading, success, and error messages are shown when reported and disappear after seven seconds. Each new message replaces the previous one and resets the timer; clearing a message hides the snackbar immediately.
 
-Each dashboard project card shows an average-complexity trend line across all available runs.
+Synchronization and generation messages report how many matching commits were synchronized and how many reports were generated. A result of `0 reports generated` can be successful: reports at the same project and commit timestamp are not regenerated.
+
+Each dashboard project card shows **Growth and Complexity (%)** for **Included files** and **Mean complexity per function** across saved runs, using the earliest saved run as the baseline. The mean uses individual function scores, including repeated names, and both metrics respect the configured file exclusions. Temporary reports are excluded; zero or missing baseline values produce gaps for that metric. Reports are spaced by their actual dates, with a zero reference line.
 
 ## Project Report Page
 
 The project page contains:
 
-- **Project history**: a responsive line chart across all stored runs. Use **Files**, **Total complexity**, and **Average complexity** to toggle individual lines. The chart key and vertical scale update to match the selected metrics.
-- **Complexity analysis**: open the dedicated analysis screen from the project page to analyse the whole application or selected files. Configure the start and end dates to limit the period, then toggle total complexity, average complexity per function, and high-complexity file counts. The hotspot table shows each file's latest and peak complexity, change over the selected period, and reports containing the file; it supports file-name filtering and sortable columns. The file filter applies 350 milliseconds after typing stops.
-- **Available runs**: each run lists its date, included-file count, total file complexity, and average complexity per file. Select a run to view its file-level results.
+- **Complexity analysis**: opens the project analysis dashboard, with links to Growth and Complexity, Scope and hotspots, Baseline changes, Change Attribution, Persistent Hotspots, Complexity Distribution, Complexity Concentration, and Module Trends. This link also works when viewing an individual stored run and opens analysis for the whole project.
+- **Available runs**: each run lists its date, included-file and function counts, total file complexity, and averages. Select a run to view its file-level results. Saved runs are paginated; use the page-size selector when more than five runs are available.
 - **Compare stored runs**: choose two runs and compare their file metrics. New, deleted, and changed files are included in the comparison.
+- **Temporary report**: select **New** to analyze current local code without checking out a historical commit. The result appears separately from saved runs and replaces the previous temporary report for the project. It can be opened or selected for comparison with a saved run.
 - **Third-party files**: add, amend, or remove per-project exact-path or `%` wildcard exclusion patterns. Save changes to persist them in `config.json` and refresh every stored run's visible file list and metrics immediately; regeneration is not required.
 - **Refresh data**: reloads the data for the current page. It does not synchronize gitlog or generate reports.
+
+The report browser no longer includes a Report trend chart or range sliders. Use the dashboard's Growth and Complexity chart or open a dedicated analysis report instead.
+
+### Project Analysis
+
+**Growth and Complexity** compares **Included files** and **Mean complexity per function** with a fixed baseline. Select a baseline report and start/end dates; changing the date range does not change the selected baseline. The baseline-to-latest table shows raw values, absolute differences, and percentage changes. The chart shows percentage changes over actual dates, and the history table includes file and function counts. Temporary reports are excluded by default; select **Include temporary reports** to include them. Zero or missing baselines produce N/A in tables and gaps in charts.
+
+More files and a lower mean indicate simpler functions, not necessarily less total complexity. Splitting files alone does not reduce function complexity. All runs use current exclusions, so changing exclusions changes historical scope.
+
+**Scope and hotspots** retains the file-scoped historical analysis. Select files and dates, toggle metrics, and review latest and peak file complexity. The hotspot table supports file-name filtering and sortable columns.
+
+**Baseline changes** uses individual stored function scores, with the same built-in and project-specific file exclusions. Select a fixed baseline report and date range; changing the date range does not change the baseline. Temporary reports are excluded by default and can be included explicitly.
+
+- **Change from baseline (%)**: `100 * (current / baseline - 1)`, with a zero reference line and reports spaced by their actual dates. Zero or missing baselines produce N/A, not an artificial percentage.
+- **Complexity per function**: arithmetic mean and nearest-rank 90th percentile of individual function scores. Unlike the legacy file-complexity metric, same-name functions are not deduplicated.
+- **High-complexity function rate (%)**: percentage of functions whose score is strictly greater than the selected threshold (default 10). Rate differences are displayed in percentage points (`pp`).
+- **Report history**: raw function counts, summed function complexity, mean, percentile, rate and baseline differences, with links to each stored run.
+
+Reports without function data have N/A means, percentiles and rates. These trends describe the changing project population, not a matched cohort of unchanged functions. Project growth and additions/removals should still be considered when interpreting the results.
+
+The additional analysis reports share the same page layout, first/last report selectors, optional temporary-report inclusion, and searchable, sortable, paginated tables. They use individual function scores after built-in and project exclusions; the stored database is unchanged.
+
+- **Change Attribution** splits the first-to-last complexity difference into added, removed, name-matched and unmatched contributions. Only unique `(file path, function name)` pairs are matched; line numbers are not identities. Renames and moves appear as additions/removals. Duplicate names remain unmatched, and their before/after complexity difference is included so all contributions reconcile to the net change. Name-based matches are inferred, not verified identities.
+- **Persistent Hotspots** ranks files containing at least one function strictly above the selected threshold. Persistence is hotspot runs divided by runs containing the file; period coverage uses all selected runs. Latest metrics are N/A for files absent from the last run. File renames are not matched.
+- **Complexity Distribution** shows function counts and percentages in the 1-5, 6-10, 11-20 and 21+ bands across the selected period. Empty function populations have N/A percentages.
+- **Complexity Concentration** measures the share of total complexity in the most complex selected percentage of functions (default 10%). The selected count rounds up to whole functions; the actual selected fraction is shown. Equal-score ties are ordered by path and line. The last run's selected functions are ranked in a separate table.
+- **Module Trends** groups files by a configurable number of directory levels (default 3). Select modules and compare means, high-complexity rates, function counts or total function complexity. The table compares means in the first and last reports; absent-module means are N/A.
+
+Change Frequency vs Complexity is not included; no additional Git history is collected for these reports.
 
 ### Run Summary Filters and Function Details
 
@@ -220,7 +251,7 @@ Existing databases are migrated automatically and historical run metrics are bac
 - **No reports generated**: the matching runs may already exist, no commits may carry configured labels, or no new commits may be available after the checkpoint.
 - **GitHub issue lookup fails**: verify `gh auth status` and that your account can view the target repository and issues.
 - **`master` cannot be resolved**: ensure the target repository contains a local `master` branch. Fetch or create it as appropriate for the repository workflow.
-- **Complexity generation fails**: install target repository dependencies and verify its ESLint/Nx configuration. The dashboard status message will show the request failure.
+- **Complexity generation fails**: install target repository dependencies and verify its ESLint/Nx configuration. The snackbar will show the request failure for seven seconds.
 - **Incorrect project matching**: confirm the GitHub issue label matches the configured `PROJECT` for Nx mode or `FOLDER` for explicit reports.
 
 ## Local Data

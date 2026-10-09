@@ -16,6 +16,10 @@ REPORT_ROUTES.get('/api/dashboard', Report.getDashboardData);
 
 REPORT_ROUTES.get('/api/reports/:idx/trends', Report.getComplexityTrends);
 
+REPORT_ROUTES.get('/api/reports/:idx/function-trends', Report.getFunctionTrends);
+
+REPORT_ROUTES.get('/api/reports/:idx/analysis/:kind', Report.getProjectInsightData);
+
 REPORT_ROUTES.put('/api/reports/:idx/exclusions', Report.updateReportExclusions);
 
 REPORT_ROUTES.post('/api/reports/:idx/temporary', Report.generateTemporaryReport);
@@ -33,6 +37,14 @@ REPORT_ROUTES.post('/reports/sync-gitlog', Report.syncGitLog);
 REPORT_ROUTES.post('/reports', Report.generateAllReports);
 
 REPORT_ROUTES.get('/reports/:idx/analysis', Report.getComplexityAnalysis);
+
+REPORT_ROUTES.get('/reports/:idx/analysis/hotspots', Report.getComplexityHotspots);
+
+REPORT_ROUTES.get('/reports/:idx/analysis/trends', Report.getBaselineAnalysis);
+
+REPORT_ROUTES.get('/reports/:idx/analysis/growth', Report.getGrowthAnalysis);
+
+REPORT_ROUTES.get('/reports/:idx/analysis/:kind', Report.getProjectInsightPage);
 
 REPORT_ROUTES.get('/reports/:idx/:tgt', Summary.getSummary);
 

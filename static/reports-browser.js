@@ -1,4 +1,4 @@
-import { renderReportTrend } from './report-chart.js';
+import './report-snackbar.js';
 
 const elements = {
   title: document.querySelector('#title'),
@@ -25,13 +25,6 @@ const elements = {
   summaryTable: document.querySelector('#summary-table'),
   summaryBack: document.querySelector('#summary-back'),
   refresh: document.querySelector('#refresh'),
-  projectTrendChart: document.querySelector('#project-trend-chart'),
-  trendRange: document.querySelector('#trend-range'),
-  trendRangeStart: document.querySelector('#trend-range-start'),
-  trendRangeEnd: document.querySelector('#trend-range-end'),
-  trendRangeStartLabel: document.querySelector('#trend-range-start-label'),
-  trendRangeEndLabel: document.querySelector('#trend-range-end-label'),
-  chartToggles: document.querySelectorAll('.chart-toggle'),
   exclusionList: document.querySelector('#exclusion-list'),
   addExclusion: document.querySelector('#add-exclusion'),
   saveExclusions: document.querySelector('#save-exclusions'),
@@ -40,17 +33,14 @@ const elements = {
 const [_, reportsSegment, idxSegment, targetSegment] = window.location.pathname.split('/');
 const reportIdx = Number(idxSegment);
 const targetName = targetSegment ? decodeURIComponent(targetSegment) : null;
+elements.analysisLink.href = `/reports/${reportIdx}/analysis`;
 const compareAParam = new URLSearchParams(window.location.search).get('compareA');
 const compareBParam = new URLSearchParams(window.location.search).get('compareB');
 let currentProjectKey = null;
-let projectHistory = [];
-let trendRangeStart = 0;
-let trendRangeEnd = 0;
 let exclusionPatterns = [];
 let savedReports = [];
 let storedReportsPage = 0;
 let storedReportsPageSize = '5';
-const activeTrendMetrics = new Set(['fileCount', 'averageComplexity']); // 'totalComplexity',
 const summaryTableState = {
   rows: [],
   columns: [],
@@ -63,38 +53,6 @@ const summaryTableState = {
     complexityAverage: { min: '', max: '' },
   },
 };
-
-const renderProjectTrend = () => {
-  renderReportTrend(
-    elements.projectTrendChart,
-    projectHistory.slice(trendRangeStart, trendRangeEnd + 1),
-    Array.from(activeTrendMetrics)
-  );
-};
-
-const updateTrendRange = () => {
-  const maximum = Math.max(projectHistory.length - 1, 0);
-  elements.trendRange.hidden = projectHistory.length < 2;
-  elements.trendRangeStart.min = '0';
-  elements.trendRangeStart.max = String(trendRangeEnd);
-  elements.trendRangeStart.value = String(trendRangeStart);
-  elements.trendRangeEnd.min = String(trendRangeStart);
-  elements.trendRangeEnd.max = String(maximum);
-  elements.trendRangeEnd.value = String(trendRangeEnd);
-  elements.trendRangeStartLabel.textContent = projectHistory[trendRangeStart]?.report ?? '';
-  elements.trendRangeEndLabel.textContent = projectHistory[trendRangeEnd]?.report ?? '';
-  renderProjectTrend();
-};
-
-elements.trendRangeStart.addEventListener('input', () => {
-  trendRangeStart = Math.min(Number(elements.trendRangeStart.value), trendRangeEnd);
-  updateTrendRange();
-});
-
-elements.trendRangeEnd.addEventListener('input', () => {
-  trendRangeEnd = Math.max(Number(elements.trendRangeEnd.value), trendRangeStart);
-  updateTrendRange();
-});
 
 const getExclusionPatterns = () => Array.from(
   elements.exclusionList.querySelectorAll('input')
@@ -784,15 +742,10 @@ const loadProjectView = async () => {
 
   elements.title.textContent = data.report.NAME;
   elements.subtitle.textContent = `Stored report runs for ${data.projectKey}`;
-  elements.analysisLink.href = `/reports/${data.idx}/analysis`;
   currentProjectKey = data.projectKey;
   exclusionPatterns = data.report.EXCLUDE_FILES || [];
   renderExclusionList();
   showProjectView();
-  projectHistory = data.storedReports.slice().reverse();
-  trendRangeStart = 0;
-  trendRangeEnd = Math.max(projectHistory.length - 1, 0);
-  updateTrendRange();
   const temporaryReport = data.storedReports.find((storedReport) => storedReport.isTemporary);
   savedReports = data.storedReports.filter((storedReport) => !storedReport.isTemporary);
   storedReportsPage = 0;
@@ -989,24 +942,6 @@ elements.compareBack.addEventListener('click', () => {
 elements.refresh.addEventListener('click', () => {
   loadCurrentView().catch((error) => {
     setStatus(error instanceof Error ? error.message : 'Unable to refresh.', 'error');
-  });
-});
-
-elements.chartToggles.forEach((toggle) => {
-  toggle.addEventListener('click', () => {
-    const metric = toggle.dataset.metric;
-    if (!metric) {
-      return;
-    }
-
-    if (activeTrendMetrics.has(metric)) {
-      activeTrendMetrics.delete(metric);
-    } else {
-      activeTrendMetrics.add(metric);
-    }
-
-    toggle.setAttribute('aria-pressed', String(activeTrendMetrics.has(metric)));
-    renderProjectTrend();
   });
 });
 
