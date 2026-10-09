@@ -1,9 +1,12 @@
+import './report-snackbar.js';
+
 const reportIdx = Number(window.location.pathname.split('/')[2]);
 const select = (id) => document.getElementById(id);
 
 select('reports-link').href = `/reports/${reportIdx}`;
 select('hotspots-link').href = `/reports/${reportIdx}/analysis/hotspots`;
 select('trends-link').href = `/reports/${reportIdx}/analysis/trends`;
+select('growth-link').href = `/reports/${reportIdx}/analysis/growth`;
 document.querySelectorAll('[data-analysis-kind]').forEach((link) => {
   link.href = `/reports/${reportIdx}/analysis/${link.dataset.analysisKind}`;
 });

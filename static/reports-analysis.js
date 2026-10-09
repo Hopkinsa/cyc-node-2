@@ -1,3 +1,4 @@
+import './report-snackbar.js';
 import { renderReportTrend } from './report-chart.js';
 
 const elements = {

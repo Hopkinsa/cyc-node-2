@@ -19,6 +19,14 @@ The application supports two project modes:
 
 The report browser supports sortable file metrics, numeric range filters, per-project file exclusions, function-level drill-down, and comparisons between stored runs.
 
+## Reports and Analysis
+
+Dashboard project cards show **Growth and Complexity (%)**, comparing included-file count and mean complexity per function with the earliest saved run. Temporary reports are excluded from these dashboard charts.
+
+Use **View reports** to browse saved runs, compare runs, manage file exclusions, or generate a temporary report from current local code. The report browser has no trend chart. **Complexity analysis**, available from the project browser and individual stored runs, opens the project's analysis dashboard with Growth and Complexity, Scope and hotspots, Baseline changes, Change Attribution, Persistent Hotspots, Complexity Distribution, Complexity Concentration, and Module Trends.
+
+Status messages appear in a bottom-centered snackbar and disappear after seven seconds. Each new message replaces the previous message and resets the timer. The in-app **Help** page and [user guide](docs/usage.md) explain the report controls and calculations.
+
 ## Configuration
 
 ```json

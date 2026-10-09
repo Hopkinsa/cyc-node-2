@@ -1,16 +1,19 @@
+import './report-snackbar.js';
 import { baselineChange, renderReportTrend } from './report-chart.js';
 
 export { baselineChange } from './report-chart.js';
 
 const reportIdx = Number(window.location.pathname.split('/')[2]);
+const isGrowthReport = window.location.pathname.endsWith('/analysis/growth');
 const select = (id) => document.getElementById(id);
 const series = [
+  ...(isGrowthReport ? [{ key: 'fileCount', label: 'Included files', color: '#426a9c' }] : []),
   { key: 'totalFunctionComplexity', label: 'Total function complexity', color: '#9c4a25' },
   { key: 'functionCount', label: 'Functions', color: '#426a9c' },
   { key: 'meanFunctionComplexity', label: 'Mean complexity per function', color: '#286f6c' },
   { key: 'percentile90', label: '90th percentile', color: '#72558a' },
   { key: 'highComplexityFunctionRate', label: 'High-complexity function rate', color: '#ad2525' },
-];
+].filter(({ key }) => !isGrowthReport || ['fileCount', 'meanFunctionComplexity'].includes(key));
 const chartOptions = { series, timeScale: true, preserveMissing: true };
 const format = (value) => Number.isFinite(value)
   ? value.toLocaleString(undefined, { maximumFractionDigits: 2 })
@@ -96,16 +99,42 @@ const render = () => {
     ? 'Some reports have no function data; function metrics are N/A.' : '');
   select('trend-results').hidden = false;
   select('range-summary').textContent = `${runs.length} runs | Baseline: ${baseline.report} | Latest: ${runs.at(-1).report}`;
-  select('risk-threshold').textContent = `Function complexity > ${loadedThreshold}`;
-  select('metric-summary').replaceChildren();
+  if (!isGrowthReport) select('risk-threshold').textContent = `Function complexity > ${loadedThreshold}`;
+  select('metric-summary').replaceChildren(...(isGrowthReport ? [select('range-summary').parentElement] : []));
   const latest = runs.at(-1);
-  appendMetric('Total function complexity', latest.totalFunctionComplexity,
+  if (isGrowthReport) {
+    appendMetric('Included files', latest.fileCount, baselineChange(latest.fileCount, baseline.fileCount));
+    select('comparison-rows').replaceChildren();
+    const metrics = [
+      ['Included files', 'fileCount'],
+      ['Mean complexity per function', 'meanFunctionComplexity'],
+    ];
+    metrics.forEach(([label, key]) => {
+      const row = document.createElement('tr');
+      const heading = document.createElement('th');
+      heading.scope = 'row';
+      heading.textContent = label;
+      row.append(heading);
+      const difference = rateChange(latest[key], baseline[key]);
+      const values = [
+        format(baseline[key]), format(latest[key]), signed(difference),
+        signed(baselineChange(latest[key], baseline[key]), '%'),
+      ];
+      values.forEach((value) => {
+        const cell = document.createElement('td');
+        cell.textContent = value;
+        row.append(cell);
+      });
+      select('comparison-rows').append(row);
+    });
+  }
+  if (!isGrowthReport) appendMetric('Total function complexity', latest.totalFunctionComplexity,
     baselineChange(latest.totalFunctionComplexity, baseline.totalFunctionComplexity));
-  appendMetric('Functions', latest.functionCount, baselineChange(latest.functionCount, baseline.functionCount));
+  if (!isGrowthReport) appendMetric('Functions', latest.functionCount, baselineChange(latest.functionCount, baseline.functionCount));
   appendMetric('Mean complexity / function', latest.meanFunctionComplexity,
     baselineChange(latest.meanFunctionComplexity, baseline.meanFunctionComplexity));
-  appendMetric('90th percentile', latest.percentile90, baselineChange(latest.percentile90, baseline.percentile90));
-  appendMetric('High-complexity rate (%)', latest.highComplexityFunctionRate,
+  if (!isGrowthReport) appendMetric('90th percentile', latest.percentile90, baselineChange(latest.percentile90, baseline.percentile90));
+  if (!isGrowthReport) appendMetric('High-complexity rate (%)', latest.highComplexityFunctionRate,
     rateChange(latest.highComplexityFunctionRate, baseline.highComplexityFunctionRate), ' pp');
 
   const baselineRuns = runs.map((run) => ({
@@ -116,10 +145,12 @@ const render = () => {
   const selectedMetrics = Array.from(document.querySelectorAll('.analysis-metrics input:checked'), (input) => input.value);
   renderReportTrend(select('baseline-chart'), baselineRuns, selectedMetrics,
     { ...chartOptions, signedValues: true, unit: '%', label: 'Percentage change from selected baseline over time' });
-  renderReportTrend(select('function-chart'), runs, ['meanFunctionComplexity', 'percentile90'],
-    { ...chartOptions, label: 'Mean and 90th percentile function complexity over time' });
-  renderReportTrend(select('risk-chart'), runs, ['highComplexityFunctionRate'],
-    { ...chartOptions, unit: '%', label: 'Percentage of functions above the complexity threshold over time' });
+  if (!isGrowthReport) {
+    renderReportTrend(select('function-chart'), runs, ['meanFunctionComplexity', 'percentile90'],
+      { ...chartOptions, label: 'Mean and 90th percentile function complexity over time' });
+    renderReportTrend(select('risk-chart'), runs, ['highComplexityFunctionRate'],
+      { ...chartOptions, unit: '%', label: 'Percentage of functions above the complexity threshold over time' });
+  }
 
   select('history-rows').replaceChildren();
   runs.forEach((run) => {
@@ -132,11 +163,14 @@ const render = () => {
     reportCell.append(link);
     row.append(reportCell);
     const values = [
-      format(run.functionCount), format(run.totalFunctionComplexity),
-      signed(baselineChange(run.totalFunctionComplexity, baseline.totalFunctionComplexity)),
+      ...(isGrowthReport ? [format(run.fileCount), signed(baselineChange(run.fileCount, baseline.fileCount), '%')] : []),
+      format(run.functionCount),
+      ...(!isGrowthReport ? [format(run.totalFunctionComplexity),
+        signed(baselineChange(run.totalFunctionComplexity, baseline.totalFunctionComplexity))] : []),
       format(run.meanFunctionComplexity), signed(baselineChange(run.meanFunctionComplexity, baseline.meanFunctionComplexity)),
-      format(run.percentile90), format(run.highComplexityFunctionRate),
-      signed(rateChange(run.highComplexityFunctionRate, baseline.highComplexityFunctionRate)),
+      ...(!isGrowthReport ? [format(run.percentile90)] : []),
+      ...(!isGrowthReport ? [format(run.highComplexityFunctionRate),
+        signed(rateChange(run.highComplexityFunctionRate, baseline.highComplexityFunctionRate))] : []),
     ];
     values.forEach((value) => {
       const cell = document.createElement('td');
@@ -148,19 +182,20 @@ const render = () => {
 };
 
 const load = async () => {
-  if (!select('threshold').reportValidity()) return;
+  if (!isGrowthReport && !select('threshold').reportValidity()) return;
   const version = ++requestVersion;
   setStatus('Loading function history...');
   select('trend-results').hidden = true;
   select('refresh').disabled = true;
   try {
-    const response = await fetch(`/api/reports/${reportIdx}/function-trends?threshold=${encodeURIComponent(select('threshold').value)}`);
+    const query = isGrowthReport ? '' : `?threshold=${encodeURIComponent(select('threshold').value)}`;
+    const response = await fetch(`/api/reports/${reportIdx}/function-trends${query}`);
     const data = await response.json();
     if (version !== requestVersion) return;
     if (!response.ok) throw new Error(data.error || 'Unable to load function history.');
     history = data.history;
     loadedThreshold = data.threshold;
-    document.title = `${data.name} - Baseline Changes`;
+    document.title = `${data.name} - ${isGrowthReport ? 'Growth and Complexity' : 'Baseline Changes'}`;
     select('title').textContent = data.name;
     select('subtitle').textContent = data.projectKey;
     populateControls();
@@ -178,6 +213,6 @@ select('trend-controls').addEventListener('submit', (event) => event.preventDefa
 ['baseline', 'start-date', 'end-date'].forEach((id) => select(id).addEventListener('change', render));
 select('include-temporary').addEventListener('change', () => { populateControls(); render(); });
 document.querySelectorAll('.analysis-metrics input').forEach((input) => input.addEventListener('change', render));
-select('threshold').addEventListener('change', load);
+if (!isGrowthReport) select('threshold').addEventListener('change', load);
 select('refresh').addEventListener('click', load);
 load();

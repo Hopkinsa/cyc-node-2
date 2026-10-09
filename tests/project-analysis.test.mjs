@@ -9,6 +9,7 @@ import { baselineChange, renderFunctionBaselineTrend, renderReportTrend } from '
 import { buildProjectAnalysis } from '../app/utility/project-analysis.ts';
 import config from '../app/utility/config.ts';
 import Report from '../app/utility/report.ts';
+import { app } from '../app/app.ts';
 
 const analysisOptions = { threshold: 10, topPercent: 10, depth: 2 };
 const observation = (name, complexity, filename = 'apps/probe/main.ts') => ({ filename, name, complexity, line: 1 });
@@ -129,6 +130,65 @@ test('baseline changes retain direction and reject zero or missing baselines', (
   assert.equal(baselineChange(1, 0), null);
   assert.equal(baselineChange(null, 10), null);
   assert.equal(baselineChange(10, undefined), null);
+});
+
+test('growth history counts included files independently of functions and applies project exclusions', async () => {
+  const index = config.REPORTS.length;
+  config.REPORTS.push({ NAME: 'Growth fixture', PATH: process.cwd(), FOLDER: 'growth-fixture', EXCLUDE_FILES: ['apps/probe/excluded.ts'] });
+  const file = (filename, complexities) => ({
+    file: filename, complexity: complexities.reduce((total, value) => total + value, 0),
+    functionTotal: complexities.length,
+    complexityTotal: complexities.reduce((total, value) => total + value, 0), complexityAverage: 0,
+    functions: complexities.map((complexity) => ({ name: 'same', line: 1, complexity })),
+  });
+  try {
+    for (const [timestamp, files] of [
+      [1, [file('apps/probe/main.ts', [10, 20])]],
+      [2, [file('apps/probe/main.ts', [5, 5]), file('apps/probe/empty.ts', []),
+        file('apps/probe/excluded.ts', [100]), file('libs/shared/common.ts', [100])]],
+    ]) {
+      DBUpdate.createReportWithData({ project: 'growth-fixture', report: `Run ${timestamp}`, timestamp,
+        fileCount: 999, totalComplexity: 999, averageComplexity: 999 }, files);
+    }
+    await DBUpdate.createReports({ project: 'other-project', report: 'Foreign', timestamp: 3,
+      fileCount: 0, totalComplexity: 0, averageComplexity: 0 });
+    let data;
+    await Report.getFunctionTrends({ params: { idx: String(index) }, query: {} }, {
+      status(value) { assert.equal(value, 200); return this; },
+      json(value) { data = value; },
+    });
+    assert.equal(data.history.length, 2);
+    const [baseline, latest] = data.history;
+    assert.deepEqual(data.history.map((item) => item.fileCount), [1, 2]);
+    assert.deepEqual(data.history.map((item) => item.totalFunctionComplexity), [30, 10]);
+    assert.deepEqual(data.history.map((item) => item.meanFunctionComplexity), [15, 5]);
+    assert.deepEqual(data.history.map((item) => item.highComplexityFunctionRate), [50, 0]);
+    assert.equal(baselineChange(latest.fileCount, baseline.fileCount), 100);
+    assert.ok(baselineChange(latest.meanFunctionComplexity, baseline.meanFunctionComplexity) < 0);
+  } finally {
+    config.REPORTS.pop();
+  }
+});
+
+test('growth report has its own route and is linked from project analysis', async () => {
+  const server = app.listen(0, '127.0.0.1');
+  try {
+    await new Promise((resolve) => server.once('listening', resolve));
+    const base = `http://127.0.0.1:${server.address().port}`;
+    const response = await fetch(`${base}/reports/0/analysis/growth`);
+    assert.equal(response.status, 200);
+    const html = await response.text();
+    assert.match(html, /Growth and Complexity/);
+    assert.match(html, /id="comparison-rows"/);
+    assert.match(html, /value="fileCount" checked/);
+    assert.doesNotMatch(html, /totalFunctionComplexity|Total Function Complexity|High-Complexity|90th percentile|id="threshold"/i);
+    const hub = await fetch(`${base}/reports/0/analysis`);
+    assert.match(await hub.text(), /id="growth-link"/);
+    const baseline = await fetch(`${base}/reports/0/analysis/trends`);
+    assert.match(await baseline.text(), /Baseline Changes/);
+  } finally {
+    await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
 });
 
 test('function statistics use individual functions, exclusions and a strict threshold', async () => {

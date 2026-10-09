@@ -39,6 +39,10 @@ class Report {
     res.sendFile(path.join(STATIC_PATH, 'reports-baseline.html'));
   };
 
+  static getGrowthAnalysis = async (_req: Request, res: Response): Promise<void> => {
+    res.sendFile(path.join(STATIC_PATH, 'reports-growth.html'));
+  };
+
   static getProjectInsightPage = async (req: Request, res: Response): Promise<void> => {
     if (!Object.hasOwn(ANALYSIS_REPORTS, String(req.params['kind']))) {
       res.status(404).json({ error: 'Unknown analysis report.' });

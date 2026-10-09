@@ -42,6 +42,8 @@ REPORT_ROUTES.get('/reports/:idx/analysis/hotspots', Report.getComplexityHotspot
 
 REPORT_ROUTES.get('/reports/:idx/analysis/trends', Report.getBaselineAnalysis);
 
+REPORT_ROUTES.get('/reports/:idx/analysis/growth', Report.getGrowthAnalysis);
+
 REPORT_ROUTES.get('/reports/:idx/analysis/:kind', Report.getProjectInsightPage);
 
 REPORT_ROUTES.get('/reports/:idx/:tgt', Summary.getSummary);
