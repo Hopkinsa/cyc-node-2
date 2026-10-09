@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Baseline Changes</title>
+    <link rel="stylesheet" href="/static/reports.css" />
+  </head>
+  <body class="project-analysis-page baseline-report-page">
+    <div class="shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Baseline changes</p>
+          <h1 id="title">Loading project...</h1>
+          <p id="subtitle" class="lede"></p>
+        </div>
+        <nav class="hero-actions" aria-label="Project navigation">
+          <a id="analysis-link" class="secondary button-link" href="#">Project analysis</a>
+          <a id="reports-link" class="secondary button-link" href="#">Back to reports</a>
+          <button id="refresh" class="primary" type="button">Refresh data</button>
+        </nav>
+      </header>
+      <p id="message" class="message" role="status">Loading function history...</p>
+      <main>
+        <form id="trend-controls" class="panel analysis-controls" aria-label="Trend filters">
+          <label class="baseline-control">Baseline report<select id="baseline" required></select></label>
+          <label>Start date<input id="start-date" type="date" /></label>
+          <label>End date<input id="end-date" type="date" /></label>
+          <label>Complexity threshold<input id="threshold" type="number" min="1" max="1000" step="1" value="10" required /></label>
+          <label class="analysis-checkbox"><input id="include-temporary" type="checkbox" />Include temporary reports</label>
+        </form>
+        <div id="trend-results" hidden>
+          <p id="range-summary" class="scope-summary"></p>
+          <dl id="metric-summary" class="status-panel analysis-summary"></dl>
+          <section class="panel analysis-section" aria-labelledby="change-heading">
+            <h2 id="change-heading">Change from baseline (%)</h2>
+            <fieldset class="analysis-metrics">
+              <legend class="visually-hidden">Baseline change metrics</legend>
+              <label><input type="checkbox" value="totalFunctionComplexity" checked />Total function complexity</label>
+              <label><input type="checkbox" value="functionCount" checked />Functions</label>
+              <label><input type="checkbox" value="meanFunctionComplexity" checked />Mean complexity per function</label>
+              <label><input type="checkbox" value="percentile90" />90th percentile</label>
+            </fieldset>
+            <div id="baseline-chart" class="trend-chart"></div>
+          </section>
+          <div class="analysis-chart-columns">
+            <section class="panel analysis-section" aria-labelledby="function-heading">
+              <h2 id="function-heading">Complexity per function</h2>
+              <div id="function-chart" class="trend-chart"></div>
+            </section>
+            <section class="panel analysis-section" aria-labelledby="risk-heading">
+              <h2 id="risk-heading">High-complexity function rate (%)</h2>
+              <p id="risk-threshold" class="scope-summary"></p>
+              <div id="risk-chart" class="trend-chart"></div>
+            </section>
+          </div>
+          <section class="panel analysis-section" aria-labelledby="history-heading">
+            <h2 id="history-heading">Report history</h2>
+            <div class="analysis-history-scroll" tabindex="0" role="region" aria-label="Report history table">
+              <table class="analysis-history-table">
+                <thead><tr><th scope="col">Report</th><th scope="col">Functions</th><th scope="col">Total function complexity</th><th scope="col">Change (%)</th><th scope="col">Mean / function</th><th scope="col">Change (%)</th><th scope="col">90th percentile</th><th scope="col">High-complexity rate (%)</th><th scope="col">Change (pp)</th></tr></thead>
+                <tbody id="history-rows"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+    <script type="module" src="/static/reports-baseline.js"></script>
+  </body>
+</html>

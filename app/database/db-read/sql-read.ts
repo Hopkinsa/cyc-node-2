@@ -4,12 +4,12 @@ export const GET_ALL_GITLOG = `SELECT id, labels, datetime FROM gitlog ORDER BY 
 export const GET_GITLOG_BY_PROJECT = `SELECT id, labels, datetime FROM gitlog WHERE labels LIKE ? ORDER BY datetime ASC`;
 export const GET_EXTRACTION_STATE = `SELECT value FROM extraction_state WHERE key = ?`;
 
-export const GET_ALL_REPORTS = `SELECT id, project, report, timestamp, fileCount, totalComplexity, averageComplexity FROM reports`;
+export const GET_ALL_REPORTS = `SELECT id, project, report, isTemporary, timestamp, fileCount, functionCount, totalComplexity, averageComplexity, averageComplexityPerFunction FROM reports`;
 export const GET_ALL_FILES = `SELECT id, report_id, filename, fileComplexity, totalFunctions, totalComplexity, averageComplexity FROM files WHERE ${REPORT_VISIBLE_FILES_SQL}`;
 export const GET_ALL_FUNCTIONS = `SELECT id, report_id, summary_id, function, line, functionComplexity FROM functions`;
 
 export const GET_REPORT_BY_NAME = `SELECT id FROM reports WHERE report = ?`;
-export const GET_REPORT_BY_PROJECT_AND_TIMESTAMP = `SELECT id, project, report, timestamp, fileCount, totalComplexity, averageComplexity FROM reports WHERE project = ? AND timestamp = ?`;
+export const GET_REPORT_BY_PROJECT_AND_TIMESTAMP = `SELECT id, project, report, isTemporary, timestamp, fileCount, functionCount, totalComplexity, averageComplexity, averageComplexityPerFunction FROM reports WHERE project = ? AND timestamp = ?`;
 export const GET_REPORT_FILES = `SELECT id, report_id, filename, fileComplexity, totalFunctions, totalComplexity, averageComplexity FROM files WHERE report_id = ?`;
 export const GET_ALL_STORED_REPORT_FILES = `SELECT id, report_id, filename, fileComplexity, totalFunctions, totalComplexity, averageComplexity FROM files`;
 export const GET_ALL_REPORT_FILES = `SELECT id, report_id, filename, fileComplexity, totalFunctions, totalComplexity, averageComplexity FROM files WHERE report_id = ? AND ${REPORT_VISIBLE_FILES_SQL}`;

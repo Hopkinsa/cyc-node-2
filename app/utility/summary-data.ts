@@ -186,7 +186,13 @@ class SummaryReport {
       (total, fileItem) => total + fileItem.complexity,
       0
     );
+    const functionCount = visibleFiles.reduce(
+      (total, fileItem) => total + fileItem.functionTotal,
+      0
+    );
     const averageComplexity = fileCount > 0 ? totalComplexity / fileCount : 0;
+    const averageComplexityPerFunction =
+      functionCount > 0 ? totalComplexity / functionCount : 0;
     const files = tmpObj.map((fileItem) => ({
       ...fileItem,
       file: path.isAbsolute(fileItem.file)
@@ -198,8 +204,10 @@ class SummaryReport {
       {
         ...reportData,
         fileCount,
+        functionCount,
         totalComplexity,
         averageComplexity,
+        averageComplexityPerFunction,
       },
       files
     );

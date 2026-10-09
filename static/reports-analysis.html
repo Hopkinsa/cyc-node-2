@@ -3,22 +3,22 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Complexity Analysis</title>
+    <title>Scope and Hotspots</title>
     <link rel="stylesheet" href="/static/reports.css" />
   </head>
-  <body>
+  <body class="project-analysis-page">
     <div class="shell">
       <header class="hero">
         <div>
-          <p class="eyebrow">Complexity analysis</p>
+          <p class="eyebrow">Scope and hotspots</p>
           <h1 id="title">Loading analysis...</h1>
           <p id="subtitle" class="lede"></p>
         </div>
-        <div class="hero-actions">
+        <nav class="hero-actions" aria-label="Project navigation">
+          <a id="analysis-link" class="secondary button-link" href="#">Project analysis</a>
           <a id="reports-link" class="secondary button-link" href="#">Back to reports</a>
-          <a class="secondary button-link" href="/dashboard">Back to dashboard</a>
           <button id="refresh" class="primary" type="button">Refresh data</button>
-        </div>
+        </nav>
       </header>
       <section id="message" class="message" aria-live="polite">Loading...</section>
       <main>

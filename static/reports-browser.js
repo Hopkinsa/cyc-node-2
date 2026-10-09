@@ -734,10 +734,17 @@ const renderTable = (rows, columns) => {
 };
 
 const loadProjectView = async () => {
-  const response = await fetch(`/api/reports/${reportIdx}`);
+  const [response, trendResponse] = await Promise.all([
+    fetch(`/api/reports/${reportIdx}`),
+    fetch(`/api/reports/${reportIdx}/function-trends`),
+  ]);
   const data = await response.json();
   if (!response.ok) {
     throw new Error(data.error || 'Unable to load project report data.');
+  }
+  const trendData = await trendResponse.json();
+  if (!trendResponse.ok) {
+    throw new Error(trendData.error || 'Unable to load function trends.');
   }
 
   elements.title.textContent = data.report.NAME;
